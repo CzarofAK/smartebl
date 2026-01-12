@@ -1,0 +1,444 @@
+# Smart EBL - ESPHome Configuration
+# Central Electroblock for Motorhomes
+# Hardware: ESP32-WROVER-IE-N16R8
+
+substitutions:
+  device_name: smart-ebl
+  friendly_name: "Smart EBL"
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  platformio_options:
+    board_build.flash_mode: dio
+    board_build.f_flash: 80000000L
+
+esp32:
+  board: esp-wrover-kit
+  framework:
+    type: esp-idf
+    version: recommended
+  flash_size: 16MB
+
+# Enable logging
+logger:
+  level: DEBUG
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+# Enable OTA updates
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+# WiFi configuration
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "${device_name}-fallback"
+    password: !secret fallback_password
+
+# Web server for standalone access
+web_server:
+  port: 80
+
+# Bluetooth proxy for BLE devices (optional)
+# esp32_ble_tracker:
+# bluetooth_proxy:
+
+# =============================================================================
+# External Components
+# =============================================================================
+
+external_components:
+  - source:
+      type: local
+      path: components
+
+# =============================================================================
+# I2C Bus Configuration
+# =============================================================================
+
+i2c:
+  sda: GPIO21
+  scl: GPIO22
+  scan: true
+  frequency: 400kHz
+
+# =============================================================================
+# UART Configuration
+# =============================================================================
+
+uart:
+  # Nextion Display (directly on board serial connections)
+  - id: uart_nextion
+    tx_pin: GPIO17
+    rx_pin: GPIO16
+    baud_rate: 115200
+
+  # LIN Bus via TJA1021T
+  - id: uart_lin
+    tx_pin: GPIO25
+    rx_pin: GPIO26
+    baud_rate: 19200
+
+# =============================================================================
+# CAN Bus Configuration (RV-C)
+# =============================================================================
+
+canbus:
+  - platform: esp32_can
+    id: can_bus
+    tx_pin: GPIO5
+    rx_pin: GPIO4
+    can_id: 0x100
+    bit_rate: 250kbps
+    on_frame:
+      - lambda: |-
+          // RV-C protocol handler
+          ESP_LOGD("can", "Received CAN frame ID: 0x%X", x.can_id);
+
+# =============================================================================
+# Nextion Display
+# =============================================================================
+
+display:
+  - platform: nextion
+    id: nextion_display
+    uart_id: uart_nextion
+    update_interval: 5s
+    lambda: |-
+      // Update display with current values
+      it.set_component_value("vBatt", id(voltage_battery).state * 10);
+      it.set_component_value("vStarter", id(voltage_starter).state * 10);
+
+# =============================================================================
+# ADS7830 ADC Sensors (Custom Component)
+# =============================================================================
+
+ads7830:
+  - id: adc_fuses_1
+    address: 0x48
+  - id: adc_fuses_2
+    address: 0x49
+  - id: adc_fuses_3
+    address: 0x4A
+  - id: adc_tanks
+    address: 0x4B
+
+# =============================================================================
+# Voltage Sensors
+# =============================================================================
+
+sensor:
+  # Battery voltage (via voltage divider)
+  - platform: ads7830
+    ads7830_id: adc_fuses_1
+    channel: 0
+    name: "Battery Voltage"
+    id: voltage_battery
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    filters:
+      - calibrate_linear:
+          - 0.0 -> 0.0
+          - 3.3 -> 16.0  # Adjust based on voltage divider ratio
+    update_interval: 1s
+
+  # Starter battery voltage
+  - platform: ads7830
+    ads7830_id: adc_fuses_1
+    channel: 1
+    name: "Starter Battery Voltage"
+    id: voltage_starter
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    filters:
+      - calibrate_linear:
+          - 0.0 -> 0.0
+          - 3.3 -> 16.0
+    update_interval: 5s
+
+  # Fuse monitoring - Light group
+  - platform: ads7830
+    ads7830_id: adc_fuses_1
+    channel: 2
+    name: "Fuse F4 Voltage"
+    id: fuse_f4
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 5s
+
+  - platform: ads7830
+    ads7830_id: adc_fuses_1
+    channel: 3
+    name: "Fuse F5 Voltage"
+    id: fuse_f5
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 5s
+
+  # Tank sensors
+  - platform: ads7830
+    ads7830_id: adc_tanks
+    channel: 0
+    name: "Fresh Water Tank"
+    id: tank_fresh
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    filters:
+      - calibrate_linear:
+          - 0.0 -> 0
+          - 3.3 -> 100
+    update_interval: 10s
+
+  - platform: ads7830
+    ads7830_id: adc_tanks
+    channel: 1
+    name: "Grey Water Tank"
+    id: tank_grey
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    filters:
+      - calibrate_linear:
+          - 0.0 -> 0
+          - 3.3 -> 100
+    update_interval: 10s
+
+  - platform: ads7830
+    ads7830_id: adc_tanks
+    channel: 2
+    name: "Black Water Tank"
+    id: tank_black
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    filters:
+      - calibrate_linear:
+          - 0.0 -> 0
+          - 3.3 -> 100
+    update_interval: 10s
+
+  # WiFi signal strength
+  - platform: wifi_signal
+    name: "WiFi Signal"
+    update_interval: 60s
+
+# =============================================================================
+# Binary Sensors (Inputs)
+# =============================================================================
+
+binary_sensor:
+  # D+ Signal from vehicle (engine running)
+  - platform: gpio
+    pin:
+      number: GPIO34
+      mode: INPUT
+    name: "D+ Signal"
+    id: d_plus_signal
+    device_class: running
+    filters:
+      - delayed_on: 100ms
+      - delayed_off: 1s
+
+  # Shore power detection
+  - platform: gpio
+    pin:
+      number: GPIO35
+      mode: INPUT
+    name: "Shore Power"
+    id: shore_power
+    device_class: plug
+    filters:
+      - delayed_on: 500ms
+
+  # Physical buttons on board
+  - platform: gpio
+    pin:
+      number: GPIO0
+      mode: INPUT_PULLUP
+      inverted: true
+    name: "Mode Button"
+    id: btn_mode
+
+  - platform: gpio
+    pin:
+      number: GPIO36
+      mode: INPUT
+    name: "Pump On Button"
+    id: btn_pump_on
+    on_press:
+      - switch.turn_on: relay_pump
+
+  - platform: gpio
+    pin:
+      number: GPIO39
+      mode: INPUT
+    name: "Pump Off Button"
+    id: btn_pump_off
+    on_press:
+      - switch.turn_off: relay_pump
+
+# =============================================================================
+# Relay Outputs (via ULN2803A)
+# =============================================================================
+
+# Bistable relay control requires pulse to toggle
+# We use output components with switches that pulse
+
+output:
+  # Light group ON coil
+  - platform: gpio
+    id: relay_light_on_coil
+    pin: GPIO13
+
+  # Light group OFF coil
+  - platform: gpio
+    id: relay_light_off_coil
+    pin: GPIO12
+
+  # 12V group ON coil
+  - platform: gpio
+    id: relay_12v_on_coil
+    pin: GPIO14
+
+  # 12V group OFF coil
+  - platform: gpio
+    id: relay_12v_off_coil
+    pin: GPIO27
+
+  # AUX group ON coil
+  - platform: gpio
+    id: relay_aux_on_coil
+    pin: GPIO26
+
+  # AUX group OFF coil
+  - platform: gpio
+    id: relay_aux_off_coil
+    pin: GPIO25
+
+  # Pump relay ON coil
+  - platform: gpio
+    id: relay_pump_on_coil
+    pin: GPIO32
+
+  # Pump relay OFF coil
+  - platform: gpio
+    id: relay_pump_off_coil
+    pin: GPIO33
+
+  # EisEx heater (via BTS6143D)
+  - platform: gpio
+    id: output_eisex
+    pin: GPIO15
+
+  # CAN termination
+  - platform: gpio
+    id: can_termination
+    pin: GPIO2
+
+switch:
+  # Bistable relay: Light Group
+  - platform: template
+    name: "Light Group"
+    id: relay_light
+    icon: mdi:lightbulb-group
+    optimistic: true
+    turn_on_action:
+      - output.turn_on: relay_light_on_coil
+      - delay: 50ms
+      - output.turn_off: relay_light_on_coil
+    turn_off_action:
+      - output.turn_on: relay_light_off_coil
+      - delay: 50ms
+      - output.turn_off: relay_light_off_coil
+
+  # Bistable relay: 12V Group
+  - platform: template
+    name: "12V Group"
+    id: relay_12v
+    icon: mdi:power-socket-eu
+    optimistic: true
+    turn_on_action:
+      - output.turn_on: relay_12v_on_coil
+      - delay: 50ms
+      - output.turn_off: relay_12v_on_coil
+    turn_off_action:
+      - output.turn_on: relay_12v_off_coil
+      - delay: 50ms
+      - output.turn_off: relay_12v_off_coil
+
+  # Bistable relay: AUX Group
+  - platform: template
+    name: "AUX Group"
+    id: relay_aux
+    icon: mdi:power
+    optimistic: true
+    turn_on_action:
+      - output.turn_on: relay_aux_on_coil
+      - delay: 50ms
+      - output.turn_off: relay_aux_on_coil
+    turn_off_action:
+      - output.turn_on: relay_aux_off_coil
+      - delay: 50ms
+      - output.turn_off: relay_aux_off_coil
+
+  # Bistable relay: Water Pump
+  - platform: template
+    name: "Water Pump"
+    id: relay_pump
+    icon: mdi:water-pump
+    optimistic: true
+    turn_on_action:
+      - output.turn_on: relay_pump_on_coil
+      - delay: 50ms
+      - output.turn_off: relay_pump_on_coil
+    turn_off_action:
+      - output.turn_on: relay_pump_off_coil
+      - delay: 50ms
+      - output.turn_off: relay_pump_off_coil
+
+  # EisEx Heater
+  - platform: output
+    name: "EisEx Heater"
+    id: switch_eisex
+    output: output_eisex
+    icon: mdi:heating-coil
+
+  # CAN Bus Termination
+  - platform: output
+    name: "CAN Termination"
+    id: switch_can_term
+    output: can_termination
+    icon: mdi:resistor
+
+# =============================================================================
+# Automations
+# =============================================================================
+
+# Turn off awning light when engine starts (D+)
+automation:
+  - id: awning_light_auto_off
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.d_plus_signal
+        to: "on"
+    action:
+      - switch.turn_off: relay_light
+
+# =============================================================================
+# Text Sensors
+# =============================================================================
+
+text_sensor:
+  - platform: version
+    name: "ESPHome Version"
+
+  - platform: wifi_info
+    ip_address:
+      name: "IP Address"
+    ssid:
+      name: "Connected SSID"
