@@ -27,3 +27,7 @@ secrets.yaml
 *.bin
 *.elf
 firmware/
+
+# Documentation PDFs
+E-Block.pdf
+Smart EBL V1.0 Datenblatt.pdf
