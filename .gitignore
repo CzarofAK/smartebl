@@ -18,6 +18,7 @@ Thumbs.db
 
 # ESPHome
 secrets.yaml
+basics.yaml
 .esphome/
 **/.pioenvs/
 **/.piolibdeps/
