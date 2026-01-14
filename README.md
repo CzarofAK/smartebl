@@ -7,7 +7,7 @@
 
 **Smart Electroblock** is a modern, open-source central electrical control unit for motorhomes and campervans. It replaces legacy OEM electroblocks from manufacturers like CBE, Schaudt, Nordelectronica, Arsiliicii, and Campoli with a smart, connected solution.
 
-**Hardware Desinger:** Ingenieurburo Jan Morawek, Munich
+**Hardware Design:** Ingenieurburo Jan Morawek, Munich
 
 ---
 
