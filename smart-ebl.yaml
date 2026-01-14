@@ -5,9 +5,7 @@
 substitutions:
   name: smart-ebl
   friendly_name: "Smart EBL"
-
-packages:
-  basics: !include basics.yaml
+<<: !include .basics.yaml
 
 esphome:
   name: ${name}
@@ -58,16 +56,10 @@ i2c:
 # =============================================================================
 
 uart:
-  # Nextion Display (directly on board serial connections)
-  - id: uart_nextion
-    tx_pin: GPIO17
-    rx_pin: GPIO16
-    baud_rate: 115200
-
   # LIN Bus via TJA1021T for Truma CP Plus
   - id: uart_lin
-    tx_pin: GPIO13
-    rx_pin: GPIO12
+    tx_pin: GPIO12
+    rx_pin: GPIO13
     baud_rate: 9600
     stop_bits: 2
 
@@ -78,8 +70,8 @@ uart:
 canbus:
   - platform: esp32_can
     id: can_bus
-    tx_pin: GPIO5
-    rx_pin: GPIO4
+    tx_pin: GPIO15
+    rx_pin: GPIO14
     can_id: 0x100
     bit_rate: 250kbps
     on_frame:
@@ -90,20 +82,6 @@ canbus:
               // RV-C protocol handler - receive all frames
               // x is std::vector<uint8_t> containing the frame data
               ESP_LOGD("can", "Received CAN frame with %d bytes", x.size());
-
-# =============================================================================
-# Nextion Display
-# =============================================================================
-
-display:
-  - platform: nextion
-    id: nextion_display
-    uart_id: uart_nextion
-    update_interval: 5s
-    lambda: |-
-      // Update display with current values
-      it.set_component_value("vBatt", id(voltage_battery).state * 10);
-      it.set_component_value("vStarter", id(voltage_starter).state * 10);
 
 # =============================================================================
 # Truma iNetbox (CP Plus Heater Control via LIN)
@@ -172,30 +150,291 @@ select:
     id: truma_fan_mode
 
 # =============================================================================
-# ADS7830 ADC Sensors (Custom Component)
+# ADC 1 (0x48)
 # =============================================================================
 
-ads7830:
-  - id: adc_fuses_1
+-sensor:
+
+# Permanent fuses group
+  # Fuse F8 - output 1 (30A)
+  - platform: ads7830
     address: 0x48
-  - id: adc_fuses_2
+    channel: 0
+    name: "Fuse F8 Voltage"
+    id: fuse_f8_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 5s
+  
+  # Fuse F7 - output 2 (30A)
+  - platform: ads7830
+    address: 0x48
+    channel: 1
+    name: "Fuse F7 Voltage"
+    id: fuse_f7_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 5s
+  
+  # Fuse F6 - output 3 (30A)
+  - platform: ads7830
+    address: 0x48
+    channel: 2
+    name: "Fuse F6 Voltage"
+    id: fuse_f6_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 5s
+
+# Light fuses group
+  # Fuse F5 - output 1 (xxA)
+  - platform: ads7830
+    address: 0x48
+    channel: 3
+    name: "Fuse F5 Voltage"
+    id: fuse_f5_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 5s
+
+  # Fuse F4 - output 2 (xxA)
+  - platform: ads7830
+    address: 0x48
+    channel: 4
+    name: "Fuse F4 Voltage"
+    id: fuse_f4_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 5s
+
+  # Fuse F3 - Awning light (10A)
+  - platform: ads7830
+    address: 0x48
+    channel: 5
+    name: "Fuse F3 Voltage"
+    id: fuse_f3_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 5s
+
+  # Fuse F2 - Contour light (10A)
+  - platform: ads7830
+    address: 0x48
+    channel: 6
+    name: "Fuse F2 Voltage"
+    id: fuse_f2_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 5s
+
+# Pump fuses group
+  # Fuse F1 - Water pump (10A)
+  - platform: ads7830
+    address: 0x48
+    channel: 7
+    name: "Fuse F1 Voltage"
+    id: fuse_f1_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 5s
+
+# -----------------------------------------------------------------------------
+# ADC 2 (0x49)
+# -----------------------------------------------------------------------------
+
+# Fridge fuses group
+  # Fuse F9 - Fridge permanent (30A)
+  - platform: ads7830
     address: 0x49
-  - id: adc_fuses_3
+    channel: 0
+    name: "Fuse F9 Voltage"
+    id: fuse_f9_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 5s
+
+  # Fuse F10 - Fridge D+ controlled (30A)
+  - platform: ads7830
+    address: 0x49
+    channel: 1
+    name: "Fuse F10 Voltage"
+    id: fuse_f10_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 5s
+
+# AUX fuses group
+  # Fuse F11 - AUX output 1 (30A)
+  - platform: ads7830
+    address: 0x49
+    channel: 2
+    name: "Fuse F11 Voltage"
+    id: fuse_f11_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 5s
+
+  # Fuse F12 - AUX output 2 (30A)
+  - platform: ads7830
+    address: 0x49
+    channel: 3
+    name: "Fuse F12 Voltage"
+    id: fuse_f12_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 5s
+
+  # Fuse F13 - AUX output 3 (30A)
+  - platform: ads7830
+    address: 0x49
+    channel: 4
+    name: "Fuse F13 Voltage"
+    id: fuse_f13_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 5s
+
+# 12V fuses group
+  # Fuse F14 - 12V output 1 (30A)
+  - platform: ads7830
+    address: 0x49
+    channel: 5
+    name: "Fuse F14 Voltage"
+    id: fuse_f14_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 5s
+
+  # Fuse F15 - 12V output 2 (30A)
+  - platform: ads7830
+    address: 0x49
+    channel: 6
+    name: "Fuse F15 Voltage"
+    id: fuse_f15_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 5s
+
+  # Fuse F16 - 12V output 3 (30A)
+  - platform: ads7830
+    address: 0x49
+    channel: 7
+    name: "Fuse F16 Voltage"
+    id: fuse_f16_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 5s
+
+# -----------------------------------------------------------------------------
+# ADC 3 (0x4A)
+# -----------------------------------------------------------------------------
+
+# Tank level sensors
+  # Fresh water tank level
+  - platform: ads7830
     address: 0x4A
-  - id: adc_tanks
-    address: 0x4B
+    channel: 0
+    name: "Fresh Water Tank Voltage"
+    id: tank_fresh_voltage
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    filters:
+      - calibrate_linear:
+          - 0.0 -> 0
+          - 3.3 -> 100
+    update_interval: 10s
 
-# =============================================================================
-# Voltage Sensors
-# =============================================================================
+  # Grey water tank level
+  - platform: ads7830
+    address: 0x4A
+    channel: 1
+    name: "Grey Water Tank Voltage"
+    id: tank_grey_voltage
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    filters:
+      - calibrate_linear:
+          - 0.0 -> 0
+          - 3.3 -> 100
+    update_interval: 10s
 
-sensor:
+  # Black water tank level
+  - platform: ads7830
+    address: 0x4A
+    channel: 2
+    name: "Black Water Tank Voltage"
+    id: tank_black_voltage
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    filters:
+      - calibrate_linear:
+          - 0.0 -> 0
+          - 3.3 -> 100
+    update_interval: 10s
+
+# Miscellaneous sensors
+  # +3V3 reference voltage
+  - platform: ads7830
+    address: 0x4A
+    channel: 3
+    name: "3.3V Voltage"
+    id: 3v3_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 60s
+    internal: true
+
+  # Shore power voltage level
+  - platform: ads7830
+    address: 0x4A
+    channel: 4
+    name: "Shore Power Voltage"
+    id: shore_power_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 10s
+
+  # Duocontrol gas system status
+  - platform: ads7830
+    address: 0x4A
+    channel: 5
+    name: "Duocontrol Voltage"
+    id: duocontrol_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 10s
+
+  # D+ voltage level
+  - platform: ads7830
+    address: 0x4A
+    channel: 6
+    name: "D+ Voltage"
+    id: dplus_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 10s
+
+  # Fridge ABS voltage level
+  - platform: ads7830
+    address: 0x4A
+    channel: 7
+    name: "Fridge ABS Voltage"
+    id: fridge_abs_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 10s
+
+# -----------------------------------------------------------------------------
+# ADC 4 (0x4B)
+# -----------------------------------------------------------------------------
+
+# Miscellaneous sensors
   # Battery voltage (via voltage divider)
   - platform: ads7830
-    ads7830_id: adc_fuses_1
+    address: 0x4B
     channel: 0
     name: "Battery Voltage"
-    id: voltage_battery
+    id: battery_voltage
     unit_of_measurement: "V"
     accuracy_decimals: 2
     filters:
@@ -206,10 +445,10 @@ sensor:
 
   # Starter battery voltage
   - platform: ads7830
-    ads7830_id: adc_fuses_1
+    address: 0x4B
     channel: 1
     name: "Starter Battery Voltage"
-    id: voltage_starter
+    id: starter_voltage
     unit_of_measurement: "V"
     accuracy_decimals: 2
     filters:
@@ -218,329 +457,66 @@ sensor:
           - 3.3 -> 16.0
     update_interval: 5s
 
-  # Fuse monitoring - Light group
-  - platform: ads7830
-    ads7830_id: adc_fuses_1
-    channel: 2
-    name: "Fuse F4 Voltage"
-    id: fuse_f4
-    unit_of_measurement: "V"
-    accuracy_decimals: 2
-    update_interval: 5s
-
-  - platform: ads7830
-    ads7830_id: adc_fuses_1
-    channel: 3
-    name: "Fuse F5 Voltage"
-    id: fuse_f5
-    unit_of_measurement: "V"
-    accuracy_decimals: 2
-    update_interval: 5s
-
-  # Tank sensors
-  - platform: ads7830
-    ads7830_id: adc_tanks
-    channel: 0
-    name: "Fresh Water Tank"
-    id: tank_fresh
-    unit_of_measurement: "%"
-    accuracy_decimals: 0
-    filters:
-      - calibrate_linear:
-          - 0.0 -> 0
-          - 3.3 -> 100
-    update_interval: 10s
-
-  - platform: ads7830
-    ads7830_id: adc_tanks
-    channel: 1
-    name: "Grey Water Tank"
-    id: tank_grey
-    unit_of_measurement: "%"
-    accuracy_decimals: 0
-    filters:
-      - calibrate_linear:
-          - 0.0 -> 0
-          - 3.3 -> 100
-    update_interval: 10s
-
-  - platform: ads7830
-    ads7830_id: adc_tanks
-    channel: 2
-    name: "Black Water Tank"
-    id: tank_black
-    unit_of_measurement: "%"
-    accuracy_decimals: 0
-    filters:
-      - calibrate_linear:
-          - 0.0 -> 0
-          - 3.3 -> 100
-    update_interval: 10s
-
-  # -----------------------------------------------------------------------------
-  # ADC Fuses 1 (0x48) - Remaining channels
-  # -----------------------------------------------------------------------------
-
-  # Fuse F6 - Permanent output 1 (30A)
-  - platform: ads7830
-    ads7830_id: adc_fuses_1
-    channel: 4
-    name: "Fuse F6 Voltage"
-    id: fuse_f6
-    unit_of_measurement: "V"
-    accuracy_decimals: 2
-    update_interval: 5s
-
-  # Fuse F7 - Permanent output 2 (30A)
-  - platform: ads7830
-    ads7830_id: adc_fuses_1
-    channel: 5
-    name: "Fuse F7 Voltage"
-    id: fuse_f7
-    unit_of_measurement: "V"
-    accuracy_decimals: 2
-    update_interval: 5s
-
-  # Fuse F8 - Permanent output 3 (30A)
-  - platform: ads7830
-    ads7830_id: adc_fuses_1
-    channel: 6
-    name: "Fuse F8 Voltage"
-    id: fuse_f8
-    unit_of_measurement: "V"
-    accuracy_decimals: 2
-    update_interval: 5s
-
-  # Fuse F1 - Water pump (10A)
-  - platform: ads7830
-    ads7830_id: adc_fuses_1
-    channel: 7
-    name: "Fuse F1 Voltage"
-    id: fuse_f1
-    unit_of_measurement: "V"
-    accuracy_decimals: 2
-    update_interval: 5s
-
-  # -----------------------------------------------------------------------------
-  # ADC Fuses 2 (0x49) - Fuse group 2
-  # -----------------------------------------------------------------------------
-
-  # Fuse F2 - Contour light (10A)
-  - platform: ads7830
-    ads7830_id: adc_fuses_2
-    channel: 0
-    name: "Fuse F2 Voltage"
-    id: fuse_f2
-    unit_of_measurement: "V"
-    accuracy_decimals: 2
-    update_interval: 5s
-
-  # Fuse F3 - Awning light (10A)
-  - platform: ads7830
-    ads7830_id: adc_fuses_2
-    channel: 1
-    name: "Fuse F3 Voltage"
-    id: fuse_f3
-    unit_of_measurement: "V"
-    accuracy_decimals: 2
-    update_interval: 5s
-
-  # Fuse F9 - Fridge permanent (30A)
-  - platform: ads7830
-    ads7830_id: adc_fuses_2
-    channel: 2
-    name: "Fuse F9 Voltage"
-    id: fuse_f9
-    unit_of_measurement: "V"
-    accuracy_decimals: 2
-    update_interval: 5s
-
-  # Fuse F10 - Fridge D+ controlled (30A)
-  - platform: ads7830
-    ads7830_id: adc_fuses_2
-    channel: 3
-    name: "Fuse F10 Voltage"
-    id: fuse_f10
-    unit_of_measurement: "V"
-    accuracy_decimals: 2
-    update_interval: 5s
-
-  # Fuse F11 - AUX group 1 (30A)
-  - platform: ads7830
-    ads7830_id: adc_fuses_2
-    channel: 4
-    name: "Fuse F11 Voltage"
-    id: fuse_f11
-    unit_of_measurement: "V"
-    accuracy_decimals: 2
-    update_interval: 5s
-
-  # Fuse F12 - AUX group 2 (30A)
-  - platform: ads7830
-    ads7830_id: adc_fuses_2
-    channel: 5
-    name: "Fuse F12 Voltage"
-    id: fuse_f12
-    unit_of_measurement: "V"
-    accuracy_decimals: 2
-    update_interval: 5s
-
-  # Fuse F13 - AUX group 3 (30A)
-  - platform: ads7830
-    ads7830_id: adc_fuses_2
-    channel: 6
-    name: "Fuse F13 Voltage"
-    id: fuse_f13
-    unit_of_measurement: "V"
-    accuracy_decimals: 2
-    update_interval: 5s
-
-  # Fuse F14 - 12V group 1 (30A)
-  - platform: ads7830
-    ads7830_id: adc_fuses_2
-    channel: 7
-    name: "Fuse F14 Voltage"
-    id: fuse_f14
-    unit_of_measurement: "V"
-    accuracy_decimals: 2
-    update_interval: 5s
-
-  # -----------------------------------------------------------------------------
-  # ADC Fuses 3 (0x4A) - Fuse group 3
-  # -----------------------------------------------------------------------------
-
-  # Fuse F15 - 12V group 2 (30A)
-  - platform: ads7830
-    ads7830_id: adc_fuses_3
-    channel: 0
-    name: "Fuse F15 Voltage"
-    id: fuse_f15
-    unit_of_measurement: "V"
-    accuracy_decimals: 2
-    update_interval: 5s
-
-  # Fuse F16 - 12V group 3 (30A)
-  - platform: ads7830
-    ads7830_id: adc_fuses_3
-    channel: 1
-    name: "Fuse F16 Voltage"
-    id: fuse_f16
-    unit_of_measurement: "V"
-    accuracy_decimals: 2
-    update_interval: 5s
-
   # Output monitoring - Light group output
   - platform: ads7830
-    ads7830_id: adc_fuses_3
+    address: 0x4B
     channel: 2
     name: "Light Output Voltage"
-    id: voltage_light_out
+    id: light_out_voltage
     unit_of_measurement: "V"
     accuracy_decimals: 2
     update_interval: 5s
 
   # Output monitoring - 12V group output
   - platform: ads7830
-    ads7830_id: adc_fuses_3
+    address: 0x4B
     channel: 3
     name: "12V Output Voltage"
-    id: voltage_12v_out
+    id: 12v_out_voltage
     unit_of_measurement: "V"
     accuracy_decimals: 2
     update_interval: 5s
 
   # Output monitoring - AUX group output
   - platform: ads7830
-    ads7830_id: adc_fuses_3
+    address: 0x4B
     channel: 4
     name: "AUX Output Voltage"
-    id: voltage_aux_out
+    id: aux_out_voltage
     unit_of_measurement: "V"
     accuracy_decimals: 2
     update_interval: 5s
 
   # Output monitoring - Pump output
   - platform: ads7830
-    ads7830_id: adc_fuses_3
+    address: 0x4B
     channel: 5
     name: "Pump Output Voltage"
-    id: voltage_pump_out
+    id: pump_out_voltage
     unit_of_measurement: "V"
     accuracy_decimals: 2
     update_interval: 5s
 
-  # Output monitoring - EisEx output
+  # Output monitoring - Awning Light
   - platform: ads7830
-    ads7830_id: adc_fuses_3
+    address: 0x4B
     channel: 6
-    name: "EisEx Output Voltage"
-    id: voltage_eisex
+    name: "Awning Light Output Voltage"
+    id: awning_light_out_voltage
     unit_of_measurement: "V"
     accuracy_decimals: 2
     update_interval: 5s
 
-  # Spare ADC channel
+  # Output monitoring - Contour Light
   - platform: ads7830
-    ads7830_id: adc_fuses_3
+    address: 0x4B
     channel: 7
-    name: "ADC Spare 1"
-    id: adc_spare_1
+    name: "Contour Light Output Voltage"
+    id: contour_light_out_voltage
     unit_of_measurement: "V"
     accuracy_decimals: 2
     update_interval: 10s
     internal: true
-
-  # -----------------------------------------------------------------------------
-  # ADC Tanks (0x4B) - Remaining channels
-  # -----------------------------------------------------------------------------
-
-  # Duocontrol gas system status
-  - platform: ads7830
-    ads7830_id: adc_tanks
-    channel: 3
-    name: "Duocontrol Voltage"
-    id: duocontrol_voltage
-    unit_of_measurement: "V"
-    accuracy_decimals: 2
-    update_interval: 10s
-
-  # Shore power voltage level
-  - platform: ads7830
-    ads7830_id: adc_tanks
-    channel: 4
-    name: "Shore Power Voltage"
-    id: shore_power_voltage
-    unit_of_measurement: "V"
-    accuracy_decimals: 2
-    update_interval: 10s
-
-  # Spare analog inputs
-  - platform: ads7830
-    ads7830_id: adc_tanks
-    channel: 5
-    name: "Analog Input 1"
-    id: analog_input_1
-    unit_of_measurement: "V"
-    accuracy_decimals: 2
-    update_interval: 10s
-
-  - platform: ads7830
-    ads7830_id: adc_tanks
-    channel: 6
-    name: "Analog Input 2"
-    id: analog_input_2
-    unit_of_measurement: "V"
-    accuracy_decimals: 2
-    update_interval: 10s
-
-  - platform: ads7830
-    ads7830_id: adc_tanks
-    channel: 7
-    name: "Analog Input 3"
-    id: analog_input_3
-    unit_of_measurement: "V"
-    accuracy_decimals: 2
-    update_interval: 10s
 
   # -----------------------------------------------------------------------------
   # Fuse Status Binary Sensors (derived from voltage)
@@ -776,200 +752,93 @@ binary_sensor:
   # GPIO Binary Inputs
   # ---------------------------------------------------------------------------
 
-  # D+ Signal from vehicle (engine running)
+  # SW1 on PCB
   - platform: gpio
     pin:
       number: GPIO34
       mode: INPUT
-    name: "D+ Signal"
-    id: d_plus_signal
+    name: "SW1"
+    id: sw_1
     device_class: running
     filters:
       - delayed_on: 100ms
       - delayed_off: 1s
-    # on_press action disabled - relay_light unavailable (GPIO12/13 used for LIN/Truma)
-    # on_press:
-    #   - switch.turn_off: relay_light
-
-  # Shore power detection
-  - platform: gpio
-    pin:
-      number: GPIO35
-      mode: INPUT
-    name: "Shore Power"
-    id: shore_power
-    device_class: plug
-    filters:
-      - delayed_on: 500ms
-
-  # Physical buttons on board
-  - platform: gpio
-    pin:
-      number: GPIO0
-      mode: INPUT_PULLUP
-      inverted: true
-    name: "Mode Button"
-    id: btn_mode
-
-  - platform: gpio
-    pin:
-      number: GPIO36
-      mode: INPUT
-    name: "Pump On Button"
-    id: btn_pump_on
     on_press:
-      - switch.turn_on: relay_pump
-
-  - platform: gpio
-    pin:
-      number: GPIO39
-      mode: INPUT
-    name: "Pump Off Button"
-    id: btn_pump_off
-    on_press:
-      - switch.turn_off: relay_pump
+      - switch.turn_off: relay_light
 
 # =============================================================================
+# Miscellaneous Switches
+# =============================================================================
+
+switch:
+
 # Relay Outputs (via ULN2803A)
-# =============================================================================
+  # Light group ON/OFF coils
+  - platform: gpio
+    id: relay_light_on_coil
+    icon: mdi:lightbulb-group
+    pin: GPIO2
+    on_turn_on:
+      - delay: 50ms
+      - output.turn_off: relay_light_on_coil
+  - platform: gpio
+    id: relay_light_off_coil
+    icon: mdi:lightbulb-group
+    pin: GPIO4
+    on_turn_on:
+      - delay: 50ms
+      - output.turn_off: relay_light_off_coil
 
-# Bistable relay control requires pulse to toggle
-# We use output components with switches that pulse
-
-output:
-  # Light group ON/OFF coils - DISABLED (GPIO12/13 used for LIN/Truma)
-  # - platform: gpio
-  #   id: relay_light_on_coil
-  #   pin: GPIO13
-  # - platform: gpio
-  #   id: relay_light_off_coil
-  #   pin: GPIO12
-
-  # 12V group ON coil
+  # 12V group ON/OFF coils
   - platform: gpio
     id: relay_12v_on_coil
-    pin: GPIO14
-
-  # 12V group OFF coil
+    icon: mdi:power-socket-eu
+    pin: GPIO5
+    on_turn_on:
+      - delay: 50ms
+      - output.turn_off: relay_12v_on_coil
   - platform: gpio
     id: relay_12v_off_coil
-    pin: GPIO27
+    icon: mdi:power-socket-eu
+    pin: GPIO18
+    on_turn_on:
+      - delay: 50ms
+      - output.turn_off: relay_12v_off_coil
 
-  # AUX group ON coil
+  # AUX group ON/OFF coil
   - platform: gpio
     id: relay_aux_on_coil
-    pin: GPIO26
-
-  # AUX group OFF coil
+    icon: mdi:power
+    pin: GPIO23
+    on_turn_on:
+      - delay: 50ms
+      - output.turn_off: relay_aux_on_coil
   - platform: gpio
     id: relay_aux_off_coil
+    icon: mdi:power
     pin: GPIO25
+    on_turn_on:
+      - delay: 50ms
+      - output.turn_off: relay_aux_off_coil
 
-  # Pump relay ON coil
+  # Pump relay ON/OFF coil
   - platform: gpio
     id: relay_pump_on_coil
-    pin: GPIO32
-
-  # Pump relay OFF coil
+    icon: mdi:water-pump
+    pin: GPIO26
+    on_turn_on:
+      - delay: 50ms
+      - output.turn_off: relay_pump_on_coil
   - platform: gpio
     id: relay_pump_off_coil
-    pin: GPIO33
+    icon: mdi:water-pump
+    pin: GPIO27
+    on_turn_on:
+      - delay: 50ms
+      - output.turn_off: relay_pump_off_coil
 
   # EisEx heater (via BTS6143D)
   - platform: gpio
     id: output_eisex
-    pin: GPIO15
-
-  # CAN termination
-  - platform: gpio
-    id: can_termination
-    pin: GPIO2
-
-switch:
-  # Bistable relay: Light Group - DISABLED (GPIO12/13 used for LIN/Truma)
-  # - platform: template
-  #   name: "Light Group"
-  #   id: relay_light
-  #   icon: mdi:lightbulb-group
-  #   optimistic: true
-  #   turn_on_action:
-  #     - output.turn_on: relay_light_on_coil
-  #     - delay: 50ms
-  #     - output.turn_off: relay_light_on_coil
-  #   turn_off_action:
-  #     - output.turn_on: relay_light_off_coil
-  #     - delay: 50ms
-  #     - output.turn_off: relay_light_off_coil
-
-  # Bistable relay: 12V Group
-  - platform: template
-    name: "12V Group"
-    id: relay_12v
-    icon: mdi:power-socket-eu
-    optimistic: true
-    turn_on_action:
-      - output.turn_on: relay_12v_on_coil
-      - delay: 50ms
-      - output.turn_off: relay_12v_on_coil
-    turn_off_action:
-      - output.turn_on: relay_12v_off_coil
-      - delay: 50ms
-      - output.turn_off: relay_12v_off_coil
-
-  # Bistable relay: AUX Group
-  - platform: template
-    name: "AUX Group"
-    id: relay_aux
-    icon: mdi:power
-    optimistic: true
-    turn_on_action:
-      - output.turn_on: relay_aux_on_coil
-      - delay: 50ms
-      - output.turn_off: relay_aux_on_coil
-    turn_off_action:
-      - output.turn_on: relay_aux_off_coil
-      - delay: 50ms
-      - output.turn_off: relay_aux_off_coil
-
-  # Bistable relay: Water Pump
-  - platform: template
-    name: "Water Pump"
-    id: relay_pump
-    icon: mdi:water-pump
-    optimistic: true
-    turn_on_action:
-      - output.turn_on: relay_pump_on_coil
-      - delay: 50ms
-      - output.turn_off: relay_pump_on_coil
-    turn_off_action:
-      - output.turn_on: relay_pump_off_coil
-      - delay: 50ms
-      - output.turn_off: relay_pump_off_coil
-
-  # EisEx Heater
-  - platform: output
-    name: "EisEx Heater"
-    id: switch_eisex
-    output: output_eisex
     icon: mdi:heating-coil
-
-  # CAN Bus Termination
-  - platform: output
-    name: "CAN Termination"
-    id: switch_can_term
-    output: can_termination
-    icon: mdi:resistor
-
-# =============================================================================
-# Text Sensors
-# =============================================================================
-
-text_sensor:
-  - platform: version
-    name: "ESPHome Version"
-
-  - platform: wifi_info
-    ip_address:
-      name: "IP Address"
-    ssid:
-      name: "Connected SSID"
+    pin: GPIO33
