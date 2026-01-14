@@ -150,15 +150,28 @@ select:
     id: truma_fan_mode
 
 # =============================================================================
+# ADS7830 ADC Hubs
+# =============================================================================
+
+ads7830:
+  - id: adc_0x48
+    address: 0x48
+  - id: adc_0x49
+    address: 0x49
+  - id: adc_0x4A
+    address: 0x4A
+  - id: adc_0x4B
+    address: 0x4B
+
+# =============================================================================
 # ADC 1 (0x48)
 # =============================================================================
 
--sensor:
-
+sensor:
 # Permanent fuses group
   # Fuse F8 - output 1 (30A)
   - platform: ads7830
-    address: 0x48
+    ads7830_id: adc_0x48
     channel: 0
     name: "Fuse F8 Voltage"
     id: fuse_f8_voltage
@@ -168,7 +181,7 @@ select:
   
   # Fuse F7 - output 2 (30A)
   - platform: ads7830
-    address: 0x48
+    ads7830_id: adc_0x48
     channel: 1
     name: "Fuse F7 Voltage"
     id: fuse_f7_voltage
@@ -178,7 +191,7 @@ select:
   
   # Fuse F6 - output 3 (30A)
   - platform: ads7830
-    address: 0x48
+    ads7830_id: adc_0x48
     channel: 2
     name: "Fuse F6 Voltage"
     id: fuse_f6_voltage
@@ -189,7 +202,7 @@ select:
 # Light fuses group
   # Fuse F5 - output 1 (xxA)
   - platform: ads7830
-    address: 0x48
+    ads7830_id: adc_0x48
     channel: 3
     name: "Fuse F5 Voltage"
     id: fuse_f5_voltage
@@ -199,7 +212,7 @@ select:
 
   # Fuse F4 - output 2 (xxA)
   - platform: ads7830
-    address: 0x48
+    ads7830_id: adc_0x48
     channel: 4
     name: "Fuse F4 Voltage"
     id: fuse_f4_voltage
@@ -209,7 +222,7 @@ select:
 
   # Fuse F3 - Awning light (10A)
   - platform: ads7830
-    address: 0x48
+    ads7830_id: adc_0x48
     channel: 5
     name: "Fuse F3 Voltage"
     id: fuse_f3_voltage
@@ -219,7 +232,7 @@ select:
 
   # Fuse F2 - Contour light (10A)
   - platform: ads7830
-    address: 0x48
+    ads7830_id: adc_0x48
     channel: 6
     name: "Fuse F2 Voltage"
     id: fuse_f2_voltage
@@ -230,7 +243,7 @@ select:
 # Pump fuses group
   # Fuse F1 - Water pump (10A)
   - platform: ads7830
-    address: 0x48
+    ads7830_id: adc_0x48
     channel: 7
     name: "Fuse F1 Voltage"
     id: fuse_f1_voltage
@@ -245,7 +258,7 @@ select:
 # Fridge fuses group
   # Fuse F9 - Fridge permanent (30A)
   - platform: ads7830
-    address: 0x49
+    ads7830_id: adc_0x49
     channel: 0
     name: "Fuse F9 Voltage"
     id: fuse_f9_voltage
@@ -255,7 +268,7 @@ select:
 
   # Fuse F10 - Fridge D+ controlled (30A)
   - platform: ads7830
-    address: 0x49
+    ads7830_id: adc_0x49
     channel: 1
     name: "Fuse F10 Voltage"
     id: fuse_f10_voltage
@@ -266,7 +279,7 @@ select:
 # AUX fuses group
   # Fuse F11 - AUX output 1 (30A)
   - platform: ads7830
-    address: 0x49
+    ads7830_id: adc_0x49
     channel: 2
     name: "Fuse F11 Voltage"
     id: fuse_f11_voltage
@@ -276,7 +289,7 @@ select:
 
   # Fuse F12 - AUX output 2 (30A)
   - platform: ads7830
-    address: 0x49
+    ads7830_id: adc_0x49
     channel: 3
     name: "Fuse F12 Voltage"
     id: fuse_f12_voltage
@@ -286,7 +299,7 @@ select:
 
   # Fuse F13 - AUX output 3 (30A)
   - platform: ads7830
-    address: 0x49
+    ads7830_id: adc_0x49
     channel: 4
     name: "Fuse F13 Voltage"
     id: fuse_f13_voltage
@@ -297,7 +310,7 @@ select:
 # 12V fuses group
   # Fuse F14 - 12V output 1 (30A)
   - platform: ads7830
-    address: 0x49
+    ads7830_id: adc_0x49
     channel: 5
     name: "Fuse F14 Voltage"
     id: fuse_f14_voltage
@@ -307,7 +320,7 @@ select:
 
   # Fuse F15 - 12V output 2 (30A)
   - platform: ads7830
-    address: 0x49
+    ads7830_id: adc_0x49
     channel: 6
     name: "Fuse F15 Voltage"
     id: fuse_f15_voltage
@@ -317,7 +330,7 @@ select:
 
   # Fuse F16 - 12V output 3 (30A)
   - platform: ads7830
-    address: 0x49
+    ads7830_id: adc_0x49
     channel: 7
     name: "Fuse F16 Voltage"
     id: fuse_f16_voltage
@@ -332,7 +345,7 @@ select:
 # Tank level sensors
   # Fresh water tank level
   - platform: ads7830
-    address: 0x4A
+    ads7830_id: adc_0x4A
     channel: 0
     name: "Fresh Water Tank Voltage"
     id: tank_fresh_voltage
@@ -346,7 +359,7 @@ select:
 
   # Grey water tank level
   - platform: ads7830
-    address: 0x4A
+    ads7830_id: adc_0x4A
     channel: 1
     name: "Grey Water Tank Voltage"
     id: tank_grey_voltage
@@ -360,7 +373,7 @@ select:
 
   # Black water tank level
   - platform: ads7830
-    address: 0x4A
+    ads7830_id: adc_0x4A
     channel: 2
     name: "Black Water Tank Voltage"
     id: tank_black_voltage
@@ -375,10 +388,10 @@ select:
 # Miscellaneous sensors
   # +3V3 reference voltage
   - platform: ads7830
-    address: 0x4A
+    ads7830_id: adc_0x4A
     channel: 3
     name: "3.3V Voltage"
-    id: 3v3_voltage
+    id: voltage_3v3
     unit_of_measurement: "V"
     accuracy_decimals: 2
     update_interval: 60s
@@ -386,7 +399,7 @@ select:
 
   # Shore power voltage level
   - platform: ads7830
-    address: 0x4A
+    ads7830_id: adc_0x4A
     channel: 4
     name: "Shore Power Voltage"
     id: shore_power_voltage
@@ -396,7 +409,7 @@ select:
 
   # Duocontrol gas system status
   - platform: ads7830
-    address: 0x4A
+    ads7830_id: adc_0x4A
     channel: 5
     name: "Duocontrol Voltage"
     id: duocontrol_voltage
@@ -406,7 +419,7 @@ select:
 
   # D+ voltage level
   - platform: ads7830
-    address: 0x4A
+    ads7830_id: adc_0x4A
     channel: 6
     name: "D+ Voltage"
     id: dplus_voltage
@@ -416,7 +429,7 @@ select:
 
   # Fridge ABS voltage level
   - platform: ads7830
-    address: 0x4A
+    ads7830_id: adc_0x4A
     channel: 7
     name: "Fridge ABS Voltage"
     id: fridge_abs_voltage
@@ -431,7 +444,7 @@ select:
 # Miscellaneous sensors
   # Battery voltage (via voltage divider)
   - platform: ads7830
-    address: 0x4B
+    ads7830_id: adc_0x4B
     channel: 0
     name: "Battery Voltage"
     id: battery_voltage
@@ -445,7 +458,7 @@ select:
 
   # Starter battery voltage
   - platform: ads7830
-    address: 0x4B
+    ads7830_id: adc_0x4B
     channel: 1
     name: "Starter Battery Voltage"
     id: starter_voltage
@@ -459,7 +472,7 @@ select:
 
   # Output monitoring - Light group output
   - platform: ads7830
-    address: 0x4B
+    ads7830_id: adc_0x4B
     channel: 2
     name: "Light Output Voltage"
     id: light_out_voltage
@@ -469,17 +482,17 @@ select:
 
   # Output monitoring - 12V group output
   - platform: ads7830
-    address: 0x4B
+    ads7830_id: adc_0x4B
     channel: 3
     name: "12V Output Voltage"
-    id: 12v_out_voltage
+    id: voltage_12v_out
     unit_of_measurement: "V"
     accuracy_decimals: 2
     update_interval: 5s
 
   # Output monitoring - AUX group output
   - platform: ads7830
-    address: 0x4B
+    ads7830_id: adc_0x4B
     channel: 4
     name: "AUX Output Voltage"
     id: aux_out_voltage
@@ -489,7 +502,7 @@ select:
 
   # Output monitoring - Pump output
   - platform: ads7830
-    address: 0x4B
+    ads7830_id: adc_0x4B
     channel: 5
     name: "Pump Output Voltage"
     id: pump_out_voltage
@@ -499,7 +512,7 @@ select:
 
   # Output monitoring - Awning Light
   - platform: ads7830
-    address: 0x4B
+    ads7830_id: adc_0x4B
     channel: 6
     name: "Awning Light Output Voltage"
     id: awning_light_out_voltage
@@ -509,7 +522,7 @@ select:
 
   # Output monitoring - Contour Light
   - platform: ads7830
-    address: 0x4B
+    ads7830_id: adc_0x4B
     channel: 7
     name: "Contour Light Output Voltage"
     id: contour_light_out_voltage
@@ -586,112 +599,112 @@ binary_sensor:
     name: "Fuse F1 OK"
     id: fuse_f1_ok
     lambda: |-
-      return id(fuse_f1).state > 1.0;
+      return id(fuse_f1_voltage).state > 1.0;
     device_class: power
 
   - platform: template
     name: "Fuse F2 OK"
     id: fuse_f2_ok
     lambda: |-
-      return id(fuse_f2).state > 1.0;
+      return id(fuse_f2_voltage).state > 1.0;
     device_class: power
 
   - platform: template
     name: "Fuse F3 OK"
     id: fuse_f3_ok
     lambda: |-
-      return id(fuse_f3).state > 1.0;
+      return id(fuse_f3_voltage).state > 1.0;
     device_class: power
 
   - platform: template
     name: "Fuse F4 OK"
     id: fuse_f4_ok
     lambda: |-
-      return id(fuse_f4).state > 1.0;
+      return id(fuse_f4_voltage).state > 1.0;
     device_class: power
 
   - platform: template
     name: "Fuse F5 OK"
     id: fuse_f5_ok
     lambda: |-
-      return id(fuse_f5).state > 1.0;
+      return id(fuse_f5_voltage).state > 1.0;
     device_class: power
 
   - platform: template
     name: "Fuse F6 OK"
     id: fuse_f6_ok
     lambda: |-
-      return id(fuse_f6).state > 1.0;
+      return id(fuse_f6_voltage).state > 1.0;
     device_class: power
 
   - platform: template
     name: "Fuse F7 OK"
     id: fuse_f7_ok
     lambda: |-
-      return id(fuse_f7).state > 1.0;
+      return id(fuse_f7_voltage).state > 1.0;
     device_class: power
 
   - platform: template
     name: "Fuse F8 OK"
     id: fuse_f8_ok
     lambda: |-
-      return id(fuse_f8).state > 1.0;
+      return id(fuse_f8_voltage).state > 1.0;
     device_class: power
 
   - platform: template
     name: "Fuse F9 OK"
     id: fuse_f9_ok
     lambda: |-
-      return id(fuse_f9).state > 1.0;
+      return id(fuse_f9_voltage).state > 1.0;
     device_class: power
 
   - platform: template
     name: "Fuse F10 OK"
     id: fuse_f10_ok
     lambda: |-
-      return id(fuse_f10).state > 1.0;
+      return id(fuse_f10_voltage).state > 1.0;
     device_class: power
 
   - platform: template
     name: "Fuse F11 OK"
     id: fuse_f11_ok
     lambda: |-
-      return id(fuse_f11).state > 1.0;
+      return id(fuse_f11_voltage).state > 1.0;
     device_class: power
 
   - platform: template
     name: "Fuse F12 OK"
     id: fuse_f12_ok
     lambda: |-
-      return id(fuse_f12).state > 1.0;
+      return id(fuse_f12_voltage).state > 1.0;
     device_class: power
 
   - platform: template
     name: "Fuse F13 OK"
     id: fuse_f13_ok
     lambda: |-
-      return id(fuse_f13).state > 1.0;
+      return id(fuse_f13_voltage).state > 1.0;
     device_class: power
 
   - platform: template
     name: "Fuse F14 OK"
     id: fuse_f14_ok
     lambda: |-
-      return id(fuse_f14).state > 1.0;
+      return id(fuse_f14_voltage).state > 1.0;
     device_class: power
 
   - platform: template
     name: "Fuse F15 OK"
     id: fuse_f15_ok
     lambda: |-
-      return id(fuse_f15).state > 1.0;
+      return id(fuse_f15_voltage).state > 1.0;
     device_class: power
 
   - platform: template
     name: "Fuse F16 OK"
     id: fuse_f16_ok
     lambda: |-
-      return id(fuse_f16).state > 1.0;
+      return id(fuse_f16_voltage).state > 1.0;
     device_class: power
 
   # ---------------------------------------------------------------------------
@@ -764,7 +777,7 @@ binary_sensor:
       - delayed_on: 100ms
       - delayed_off: 1s
     on_press:
-      - switch.turn_off: relay_light
+      - switch.turn_on: relay_light_off_coil
 
 # =============================================================================
 # Miscellaneous Switches
@@ -780,14 +793,14 @@ switch:
     pin: GPIO2
     on_turn_on:
       - delay: 50ms
-      - output.turn_off: relay_light_on_coil
+      - switch.turn_off: relay_light_on_coil
   - platform: gpio
     id: relay_light_off_coil
     icon: mdi:lightbulb-group
     pin: GPIO4
     on_turn_on:
       - delay: 50ms
-      - output.turn_off: relay_light_off_coil
+      - switch.turn_off: relay_light_off_coil
 
   # 12V group ON/OFF coils
   - platform: gpio
@@ -796,14 +809,14 @@ switch:
     pin: GPIO5
     on_turn_on:
       - delay: 50ms
-      - output.turn_off: relay_12v_on_coil
+      - switch.turn_off: relay_12v_on_coil
   - platform: gpio
     id: relay_12v_off_coil
     icon: mdi:power-socket-eu
     pin: GPIO18
     on_turn_on:
       - delay: 50ms
-      - output.turn_off: relay_12v_off_coil
+      - switch.turn_off: relay_12v_off_coil
 
   # AUX group ON/OFF coil
   - platform: gpio
@@ -812,14 +825,14 @@ switch:
     pin: GPIO23
     on_turn_on:
       - delay: 50ms
-      - output.turn_off: relay_aux_on_coil
+      - switch.turn_off: relay_aux_on_coil
   - platform: gpio
     id: relay_aux_off_coil
     icon: mdi:power
     pin: GPIO25
     on_turn_on:
       - delay: 50ms
-      - output.turn_off: relay_aux_off_coil
+      - switch.turn_off: relay_aux_off_coil
 
   # Pump relay ON/OFF coil
   - platform: gpio
@@ -828,14 +841,14 @@ switch:
     pin: GPIO26
     on_turn_on:
       - delay: 50ms
-      - output.turn_off: relay_pump_on_coil
+      - switch.turn_off: relay_pump_on_coil
   - platform: gpio
     id: relay_pump_off_coil
     icon: mdi:water-pump
     pin: GPIO27
     on_turn_on:
       - delay: 50ms
-      - output.turn_off: relay_pump_off_coil
+      - switch.turn_off: relay_pump_off_coil
 
   # EisEx heater (via BTS6143D)
   - platform: gpio
