@@ -785,73 +785,125 @@ binary_sensor:
 
 switch:
 
-# Relay Outputs (via ULN2803A)
-  # Light group ON/OFF coils
+# ---------------------------------------------------------------------------
+# Internal Relay Coil Drivers (bistable relays need pulse to toggle)
+# ---------------------------------------------------------------------------
+
+  # Light group ON/OFF coils (internal)
   - platform: gpio
     id: relay_light_on_coil
-    icon: mdi:lightbulb-group
     pin: GPIO2
+    internal: true
     on_turn_on:
       - delay: 50ms
       - switch.turn_off: relay_light_on_coil
   - platform: gpio
     id: relay_light_off_coil
-    icon: mdi:lightbulb-group
     pin: GPIO4
+    internal: true
     on_turn_on:
       - delay: 50ms
       - switch.turn_off: relay_light_off_coil
 
-  # 12V group ON/OFF coils
+  # 12V group ON/OFF coils (internal)
   - platform: gpio
     id: relay_12v_on_coil
-    icon: mdi:power-socket-eu
     pin: GPIO5
+    internal: true
     on_turn_on:
       - delay: 50ms
       - switch.turn_off: relay_12v_on_coil
   - platform: gpio
     id: relay_12v_off_coil
-    icon: mdi:power-socket-eu
     pin: GPIO18
+    internal: true
     on_turn_on:
       - delay: 50ms
       - switch.turn_off: relay_12v_off_coil
 
-  # AUX group ON/OFF coil
+  # AUX group ON/OFF coils (internal)
   - platform: gpio
     id: relay_aux_on_coil
-    icon: mdi:power
     pin: GPIO23
+    internal: true
     on_turn_on:
       - delay: 50ms
       - switch.turn_off: relay_aux_on_coil
   - platform: gpio
     id: relay_aux_off_coil
-    icon: mdi:power
     pin: GPIO25
+    internal: true
     on_turn_on:
       - delay: 50ms
       - switch.turn_off: relay_aux_off_coil
 
-  # Pump relay ON/OFF coil
+  # Pump relay ON/OFF coils (internal)
   - platform: gpio
     id: relay_pump_on_coil
-    icon: mdi:water-pump
     pin: GPIO26
+    internal: true
     on_turn_on:
       - delay: 50ms
       - switch.turn_off: relay_pump_on_coil
   - platform: gpio
     id: relay_pump_off_coil
-    icon: mdi:water-pump
     pin: GPIO27
+    internal: true
     on_turn_on:
       - delay: 50ms
       - switch.turn_off: relay_pump_off_coil
 
-  # EisEx heater (via BTS6143D)
+# ---------------------------------------------------------------------------
+# User-Facing Switches (exposed to Home Assistant)
+# ---------------------------------------------------------------------------
+
+  # Light Group - controls F4-F5 fuses (2x 30A)
+  - platform: template
+    name: "Light Group"
+    id: switch_light
+    icon: mdi:lightbulb-group
+    optimistic: true
+    turn_on_action:
+      - switch.turn_on: relay_light_on_coil
+    turn_off_action:
+      - switch.turn_on: relay_light_off_coil
+
+  # 12V Group - controls F14-F16 fuses (3x 30A)
+  - platform: template
+    name: "12V Group"
+    id: switch_12v
+    icon: mdi:power-socket-eu
+    optimistic: true
+    turn_on_action:
+      - switch.turn_on: relay_12v_on_coil
+    turn_off_action:
+      - switch.turn_on: relay_12v_off_coil
+
+  # AUX Group - controls F11-F13 fuses (3x 30A)
+  - platform: template
+    name: "AUX Group"
+    id: switch_aux
+    icon: mdi:power
+    optimistic: true
+    turn_on_action:
+      - switch.turn_on: relay_aux_on_coil
+    turn_off_action:
+      - switch.turn_on: relay_aux_off_coil
+
+  # Water Pump - controls F1 fuse (10A)
+  - platform: template
+    name: "Water Pump"
+    id: switch_pump
+    icon: mdi:water-pump
+    optimistic: true
+    turn_on_action:
+      - switch.turn_on: relay_pump_on_coil
+    turn_off_action:
+      - switch.turn_on: relay_pump_off_coil
+
+  # EisEx Heater (via BTS6143D smart switch)
   - platform: gpio
-    id: output_eisex
+    name: "EisEx Heater"
+    id: switch_eisex
     icon: mdi:heating-coil
     pin: GPIO33
