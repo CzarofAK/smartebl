@@ -843,14 +843,14 @@ switch:
     pin: GPIO26
     internal: true
     on_turn_on:
-      - delay: 50ms
+      - delay: 3000ms
       - switch.turn_off: relay_pump_on_coil
   - platform: gpio
     id: relay_pump_off_coil
     pin: GPIO27
     internal: true
     on_turn_on:
-      - delay: 50ms
+      - delay: 3000ms
       - switch.turn_off: relay_pump_off_coil
 
 # ---------------------------------------------------------------------------
