@@ -362,18 +362,8 @@ automation:
 - [ ] Nextion display UI pages
 - [ ] Tank calibration wizard
 - [ ] CI-BUS (CIVD) support
-- [ ] ESP-NOW mesh networking
 - [ ] Bluetooth proxy for BLE sensors
 - [ ] Energy consumption tracking
-
----
-
-## Certifications (Planned)
-
-- CE (Regulation EC 765/2008)
-- ECE R10 (EMC)
-- CI-BUS (CIVD)
-- RV-C (RVIA)
 
 ---
 
