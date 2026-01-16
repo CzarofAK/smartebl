@@ -9,6 +9,10 @@
 substitutions:
   name: smart-ebl
   friendly_name: Smart EBL
+  on_boot:
+    priority: -100
+    then:
+      - switch.turn_on: mcp23017_reset
 
 esphome:
   name: ${name}
@@ -672,6 +676,12 @@ switch:
   #     GPA0(0)=EisX, GPA1(1)=D+2, GPA2(2)=F-CTRL
   #     GPA3(3)=T1_DC, GPA4(4)=T2_DC, GPA5(5)=T3_DC
   # ---------------------------------------------------------------------------
+
+  - platform: gpio
+    id: mcp23017_reset
+    internal: true
+    pin: GPIO33
+    restore_mode: ALWAYS_ON
 
   # Pump relay coils (GPB0=OFF, GPB1=ON)
   - platform: gpio
