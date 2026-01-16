@@ -638,99 +638,104 @@ switch:
   # ---------------------------------------------------------------------------
   # Internal MCP23017 Pin Outputs (coil drivers via ULN2803A)
   # Bistable relays need a pulse to change state
+  # PIN MAPPING FROM SCHEMATIC (E-Block.kicad_sch):
+  #   GPA0 = P_off (Pump OFF)    GPA4 = A_off (AUX OFF)
+  #   GPA1 = P_on  (Pump ON)     GPA5 = A_on  (AUX ON)
+  #   GPA2 = L_off (Light OFF)   GPA6 = 12_off (12V OFF)
+  #   GPA3 = L_on  (Light ON)    GPA7 = 12_on  (12V ON)
   # ---------------------------------------------------------------------------
 
-  # 12V Group relay coils (GPA0, GPA1)
+  # Pump relay coils (GPA0=OFF, GPA1=ON)
   - platform: gpio
-    id: relay_12v_on_coil
+    id: relay_pump_off_coil
     pin:
       mcp23xxx: io_expander
-      number: 0  # GPA0
+      number: 0  # GPA0 = P_off
       mode: OUTPUT
     internal: true
     on_turn_on:
       - delay: 100ms
-      - switch.turn_off: relay_12v_on_coil
+      - switch.turn_off: relay_pump_off_coil
 
   - platform: gpio
-    id: relay_12v_off_coil
+    id: relay_pump_on_coil
     pin:
       mcp23xxx: io_expander
-      number: 1  # GPA1
+      number: 1  # GPA1 = P_on
       mode: OUTPUT
     internal: true
     on_turn_on:
       - delay: 100ms
-      - switch.turn_off: relay_12v_off_coil
+      - switch.turn_off: relay_pump_on_coil
 
-  # AUX Group relay coils (GPA2, GPA3)
-  - platform: gpio
-    id: relay_aux_on_coil
-    pin:
-      mcp23xxx: io_expander
-      number: 2  # GPA2
-      mode: OUTPUT
-    internal: true
-    on_turn_on:
-      - delay: 100ms
-      - switch.turn_off: relay_aux_on_coil
-
-  - platform: gpio
-    id: relay_aux_off_coil
-    pin:
-      mcp23xxx: io_expander
-      number: 3  # GPA3
-      mode: OUTPUT
-    internal: true
-    on_turn_on:
-      - delay: 100ms
-      - switch.turn_off: relay_aux_off_coil
-
-  # Light Group relay coils (GPA4, GPA5)
-  - platform: gpio
-    id: relay_light_on_coil
-    pin:
-      mcp23xxx: io_expander
-      number: 4  # GPA4
-      mode: OUTPUT
-    internal: true
-    on_turn_on:
-      - delay: 100ms
-      - switch.turn_off: relay_light_on_coil
-
+  # Light Group relay coils (GPA2=OFF, GPA3=ON)
   - platform: gpio
     id: relay_light_off_coil
     pin:
       mcp23xxx: io_expander
-      number: 5  # GPA5
+      number: 2  # GPA2 = L_off
       mode: OUTPUT
     internal: true
     on_turn_on:
       - delay: 100ms
       - switch.turn_off: relay_light_off_coil
 
-  # Pump relay coils (GPA6, GPA7)
   - platform: gpio
-    id: relay_pump_on_coil
+    id: relay_light_on_coil
     pin:
       mcp23xxx: io_expander
-      number: 6  # GPA6
+      number: 3  # GPA3 = L_on
       mode: OUTPUT
     internal: true
     on_turn_on:
-      - delay: 3000ms
-      - switch.turn_off: relay_pump_on_coil
+      - delay: 100ms
+      - switch.turn_off: relay_light_on_coil
+
+  # AUX Group relay coils (GPA4=OFF, GPA5=ON)
+  - platform: gpio
+    id: relay_aux_off_coil
+    pin:
+      mcp23xxx: io_expander
+      number: 4  # GPA4 = A_off
+      mode: OUTPUT
+    internal: true
+    on_turn_on:
+      - delay: 100ms
+      - switch.turn_off: relay_aux_off_coil
 
   - platform: gpio
-    id: relay_pump_off_coil
+    id: relay_aux_on_coil
     pin:
       mcp23xxx: io_expander
-      number: 7  # GPA7
+      number: 5  # GPA5 = A_on
       mode: OUTPUT
     internal: true
     on_turn_on:
-      - delay: 3000ms
-      - switch.turn_off: relay_pump_off_coil
+      - delay: 100ms
+      - switch.turn_off: relay_aux_on_coil
+
+  # 12V Group relay coils (GPA6=OFF, GPA7=ON)
+  - platform: gpio
+    id: relay_12v_off_coil
+    pin:
+      mcp23xxx: io_expander
+      number: 6  # GPA6 = 12_off
+      mode: OUTPUT
+    internal: true
+    on_turn_on:
+      - delay: 100ms
+      - switch.turn_off: relay_12v_off_coil
+
+  - platform: gpio
+    id: relay_12v_on_coil
+    pin:
+      mcp23xxx: io_expander
+      number: 7  # GPA7 = 12_on
+      mode: OUTPUT
+    internal: true
+    on_turn_on:
+      - delay: 100ms
+      - switch.turn_off: relay_12v_on_coil
 
   # ---------------------------------------------------------------------------
   # Additional MCP23017 Outputs (GPB0-GPB5)

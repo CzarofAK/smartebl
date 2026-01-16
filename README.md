@@ -199,17 +199,18 @@ ESP32 GPIO21/22 (I2C) --> MCP23017 (0x20) --> ULN2803A --> Relay Coils
 
 | Pin | Signal | Function |
 |-----|--------|----------|
-| GPA0 | 12V_ON | K3 bistable relay ON coil (12V group) |
-| GPA1 | 12V_OFF | K3 bistable relay OFF coil |
-| GPA2 | AUX_ON | K7 bistable relay ON coil (AUX group) |
-| GPA3 | AUX_OFF | K7 bistable relay OFF coil |
-| GPA4 | Light_ON | K8 bistable relay ON coil (Light group) |
-| GPA5 | Light_OFF | K8 bistable relay OFF coil |
-| GPA6 | Pump_ON | K4 bistable relay ON coil (Water pump) |
-| GPA7 | Pump_OFF | K4 bistable relay OFF coil |
-| GPB0 | EisEx | EisEx heater output (via BTS6143D) |
-| GPB1 | D+_Relay | D+ programmable output |
-| GPB2 | Fridge | Fridge control relay |
+| GPA0 | P_off | K4 bistable relay OFF coil (Water pump) |
+| GPA1 | P_on | K4 bistable relay ON coil (Water pump) |
+| GPA2 | L_off | K8 bistable relay OFF coil (Light group) |
+| GPA3 | L_on | K8 bistable relay ON coil (Light group) |
+| GPA4 | A_off | K7 bistable relay OFF coil (AUX group) |
+| GPA5 | A_on | K7 bistable relay ON coil (AUX group) |
+| GPA6 | 12_off | K3 bistable relay OFF coil (12V group) |
+| GPA7 | 12_on | K3 bistable relay ON coil (12V group) |
+| GPB0 | EisX | EisEx heater output (via BTS6143D) |
+| GPB1 | D+2 | D+ programmable output |
+| GPB2 | F-CTRL | Fridge control relay |
+| GPB3-5 | T1/T2/T3_DC | Tank sensor DC mode control |
 
 ### ESP32 GPIO Mapping
 

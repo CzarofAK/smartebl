@@ -234,19 +234,30 @@ esphome upload smart-ebl.yaml --device smart-ebl.local
 
 | GPIO | Function | Notes |
 |------|----------|-------|
-| GPIO0 | BOOT / Mode Button | Pull-up, active low |
+| GPIO0 | BOOT / Mode Button | Pull-up, active low (IO0) |
 | GPIO1 | TXD0 | USB programming (CP2102N) |
 | GPIO3 | RXD0 | USB programming (CP2102N) |
 | GPIO4 | CAN RX | esp32_can (SN65HVD234) |
 | GPIO5 | CAN TX | esp32_can (SN65HVD234) |
-| GPIO16 | UART1 RX | LIN bus / Nextion display |
-| GPIO17 | UART1 TX | LIN bus / Nextion display |
+| GPIO16 | TXD2 / RXD1 | Nextion display RX (via TRS3221) |
+| GPIO17 | RXD2 / TXD1 | Nextion display TX (via TRS3221) |
 | GPIO21 | I2C SDA | ADCs + MCP23017 |
 | GPIO22 | I2C SCL | ADCs + MCP23017 |
+| GPIO25 | LIN_MS | LIN Master/Slave select |
+| GPIO26 | LIN_WAKE | LIN Wake signal |
+| GPIO27 | LIN_SLP | LIN Sleep signal |
+| GPIO32 | LIN TX | LIN bus (TJA1021T via UART) |
+| GPIO33 | LIN RX | LIN bus (TJA1021T via UART) |
 | GPIO34 | D+ Signal | Input only |
-| GPIO35 | Shore Power | Input only |
+| GPIO35 | Shore Power (GPIO35) | Input only |
 | GPIO36 | Input (VP) | Input only |
 | GPIO39 | Input (VN) | Input only |
+
+### Display Connection (TRS3221 RS-232 Transceiver)
+The Nextion display connects via RS-232 levels through the TRS3221 (U18):
+- **TXD_PANEL**: ESP32 TXD2 -> TRS3221 -> Nextion RX
+- **RXD_PANEL**: Nextion TX -> TRS3221 -> ESP32 RXD2
+- **Connector**: RJ45 (includes RS232, LIN, and 12V power)
 
 ### MCP23017 IO Expander (U17) - Address 0x20
 
@@ -255,22 +266,24 @@ All relay control is via MCP23017 -> ULN2803A (U8) -> Relay coils.
 **Port A (GPA0-GPA7) - Relay Control:**
 | Pin | Signal | Function |
 |-----|--------|----------|
-| GPA0 | 12V_ON | K3 bistable relay ON coil (12V group) |
-| GPA1 | 12V_OFF | K3 bistable relay OFF coil |
-| GPA2 | AUX_ON | K7 bistable relay ON coil (AUX group) |
-| GPA3 | AUX_OFF | K7 bistable relay OFF coil |
-| GPA4 | Light_ON | K8 bistable relay ON coil (Light group) |
-| GPA5 | Light_OFF | K8 bistable relay OFF coil |
-| GPA6 | Pump_ON | K4 bistable relay ON coil (Water pump) |
-| GPA7 | Pump_OFF | K4 bistable relay OFF coil |
+| GPA0 | P_off | K4 bistable relay OFF coil (Water pump) |
+| GPA1 | P_on | K4 bistable relay ON coil (Water pump) |
+| GPA2 | L_off | K8 bistable relay OFF coil (Light group) |
+| GPA3 | L_on | K8 bistable relay ON coil (Light group) |
+| GPA4 | A_off | K7 bistable relay OFF coil (AUX group) |
+| GPA5 | A_on | K7 bistable relay ON coil (AUX group) |
+| GPA6 | 12_off | K3 bistable relay OFF coil (12V group) |
+| GPA7 | 12_on | K3 bistable relay ON coil (12V group) |
 
 **Port B (GPB0-GPB7) - Additional Outputs:**
 | Pin | Signal | Function |
 |-----|--------|----------|
-| GPB0 | EisEx | EisEx heater (via BTS6143D) |
-| GPB1 | D+_Relay | D+ programmable output relay |
-| GPB2 | Fridge | Fridge control relay (K5/K6) |
-| GPB3-GPB7 | Reserved | Future expansion |
+| GPB0 | EisX | EisEx heater (via BTS6143D) |
+| GPB1 | D+2 | D+ programmable output relay |
+| GPB2 | F-CTRL | Fridge control relay (K5/K6) |
+| GPB3 | T1_DC | Tank 1 DC mode control |
+| GPB4 | T2_DC | Tank 2 DC mode control |
+| GPB5 | T3_DC | Tank 3 DC mode control |
 
 ### I2C Bus Devices
 
@@ -290,12 +303,23 @@ Bistable (latching) relays require a pulse to toggle state. Controlled via MCP23
   id: relay_pump_on_coil
   pin:
     mcp23xxx: io_expander
-    number: 6  # GPA6
+    number: 1  # GPA1 = P_on
     mode: OUTPUT
   internal: true
   on_turn_on:
     - delay: 100ms
     - switch.turn_off: relay_pump_on_coil
+
+- platform: gpio
+  id: relay_pump_off_coil
+  pin:
+    mcp23xxx: io_expander
+    number: 0  # GPA0 = P_off
+    mode: OUTPUT
+  internal: true
+  on_turn_on:
+    - delay: 100ms
+    - switch.turn_off: relay_pump_off_coil
 
 # Template switch for user control
 - platform: template
