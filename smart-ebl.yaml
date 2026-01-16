@@ -69,7 +69,7 @@ i2c:
 # =============================================================================
 # I2C Address: 0x20 (A0=A1=A2=GND)
 # GPIO33 = IO_RESET (reset pin), GPIO36 = INT_A, GPIO39 = INT_B
-#
+# INT_A and INT_B are not used in this configuration as there are no inputs
 # PORT B (GPB0-GPB7) - Relay coil control via ULN2803A:
 #   GPB0=P_off, GPB1=P_on, GPB2=L_off, GPB3=L_on,
 #   GPB4=A_off, GPB5=A_on, GPB6=12_off, GPB7=12_on
@@ -81,12 +81,39 @@ mcp23017:
   - id: io_expander
     address: 0x20
 
-# MCP23017 Reset Pin - must be HIGH for normal operation
+
 output:
+    # MCP23017 Reset Pin - must be HIGH for normal operation
   - platform: gpio
     pin: GPIO33
     id: mcp23017_reset
     # Will be set HIGH at boot via on_boot
+
+    # LIN Bus Control Pins (via TJA1021T U14)
+  - platform: gpio
+    id: lin_ms
+    pin: GPIO25
+    restore_mode: RESTORE_DEFAULT_OFF # OFF=Slave, ON=Master
+  - platform: gpio
+    id: lin_wake
+    pin: GPIO26
+    restore_mode: RESTORE_DEFAULT_OFF # OFF=Normal, ON=Wakeup
+  - platform: gpio
+    id: lin_slp
+    pin: GPIO27
+    restore_mode: RESTORE_DEFAULT_OFF # OFF=Normal, ON=Sleep
+
+    # CAN Bus Control Pins (via SN65HVD234 U3)
+  - platform: gpio
+    id: can_term
+    pin: GPIO23
+    inverted: false
+    restore_mode: RESTORE_DEFAULT_ON  # Terminating resistor enabled after boot if ON
+  - platform: gpio
+    id: can_stb
+    pin: GPIO32
+    inverted: false
+    restore_mode: RESTORE_DEFAULT_OFF  # Transceiver active after boot if OFF
 
 # =============================================================================
 # ADS7830 8-bit ADC Hubs
@@ -374,6 +401,17 @@ sensor:
   - platform: ads7830
     ads7830_id: adc_inputs
     channel: 3
+    name: "Voltage 3v3 Bus"
+    id: voltage_3v3_bus
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 5s
+    filters:
+      - multiply: 5.545
+
+  - platform: ads7830
+    ads7830_id: adc_inputs
+    channel: 4
     name: "AC Charger Detection"
     id: ac_charger_voltage
     unit_of_measurement: "V"
@@ -384,7 +422,7 @@ sensor:
 
   - platform: ads7830
     ads7830_id: adc_inputs
-    channel: 4
+    channel: 5
     name: "DuoControl Status"
     id: duocontrol_voltage
     unit_of_measurement: "V"
@@ -395,14 +433,26 @@ sensor:
 
   - platform: ads7830
     ads7830_id: adc_inputs
-    channel: 5
-    name: "D+ Signal Voltage"
+    channel: 6
+    name: "D+ Signal Status"
     id: dplus_voltage
     unit_of_measurement: "V"
     accuracy_decimals: 2
     update_interval: 5s
     filters:
       - multiply: 5.545
+
+  - platform: ads7830
+    ads7830_id: adc_inputs
+    channel: 7
+    name: "F10 ABS Status"
+    id: f10_abs_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 5s
+    filters:
+      - multiply: 5.545
+
 
   # ---------------------------------------------------------------------------
   # Output Monitoring (U7 - 0x4B)
@@ -411,6 +461,17 @@ sensor:
   - platform: ads7830
     ads7830_id: adc_outputs
     channel: 0
+    name: "Leisure Battery Voltage"
+    id: leisure_battery_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 5s
+    filters:
+      - multiply: 5.545
+
+  - platform: ads7830
+    ads7830_id: adc_outputs
+    channel: 1
     name: "Starter Battery Voltage"
     id: starter_battery_voltage
     unit_of_measurement: "V"
@@ -421,7 +482,7 @@ sensor:
 
   - platform: ads7830
     ads7830_id: adc_outputs
-    channel: 1
+    channel: 2
     name: "Light Output Voltage"
     id: light_output_voltage
     unit_of_measurement: "V"
@@ -432,7 +493,7 @@ sensor:
 
   - platform: ads7830
     ads7830_id: adc_outputs
-    channel: 2
+    channel: 3
     name: "12V User Output Voltage"
     id: user_12v_output_voltage
     unit_of_measurement: "V"
@@ -443,7 +504,7 @@ sensor:
 
   - platform: ads7830
     ads7830_id: adc_outputs
-    channel: 3
+    channel: 4
     name: "12V AUX Output Voltage"
     id: aux_12v_output_voltage
     unit_of_measurement: "V"
@@ -454,7 +515,7 @@ sensor:
 
   - platform: ads7830
     ads7830_id: adc_outputs
-    channel: 4
+    channel: 5
     name: "Pump Output Voltage"
     id: pump_output_voltage
     unit_of_measurement: "V"
@@ -465,7 +526,7 @@ sensor:
 
   - platform: ads7830
     ads7830_id: adc_outputs
-    channel: 5
+    channel: 6
     name: "Light L Output Voltage"
     id: light_l_output_voltage
     unit_of_measurement: "V"
@@ -476,7 +537,7 @@ sensor:
 
   - platform: ads7830
     ads7830_id: adc_outputs
-    channel: 6
+    channel: 7
     name: "Contour Light Output Voltage"
     id: contour_light_output_voltage
     unit_of_measurement: "V"
@@ -660,6 +721,7 @@ binary_sensor:
     name: "Truma Has Error"
     id: truma_has_error
 
+
 # =============================================================================
 # Switches - MCP23017 Controlled Relays
 # =============================================================================
@@ -682,6 +744,10 @@ switch:
     internal: true
     pin: GPIO33
     restore_mode: ALWAYS_ON
+
+  # ---------------------------------------------------------------------------
+  # Relay Coils MCP23017 Outputs (GPB0-GPB5)
+  # ---------------------------------------------------------------------------
 
   # Pump relay coils (GPB0=OFF, GPB1=ON)
   - platform: gpio
@@ -789,10 +855,10 @@ switch:
       number: 0  # GPA0 = EisX
       mode: OUTPUT
 
-  # D+ Relay control (GPA1)
+  # D+2 Relay control (GPA1)
   - platform: gpio
     id: dplus_relay
-    name: "D+ Relay"
+    name: "D+2 Relay"
     icon: mdi:car-battery
     pin:
       mcp23xxx: io_expander
@@ -812,8 +878,8 @@ switch:
   # Tank DC mode controls (GPA3-GPA5)
   # These inhibit tank readings while driving/moving
   - platform: gpio
-    id: tank1_dc_mode
-    name: "Tank 1 DC Mode"
+    id: tank1_dc_control
+    name: "Tank 1 Control"
     icon: mdi:water
     pin:
       mcp23xxx: io_expander
@@ -821,8 +887,8 @@ switch:
       mode: OUTPUT
 
   - platform: gpio
-    id: tank2_dc_mode
-    name: "Tank 2 DC Mode"
+    id: tank2_dc_control
+    name: "Tank 2 Control"
     icon: mdi:water
     pin:
       mcp23xxx: io_expander
@@ -830,8 +896,8 @@ switch:
       mode: OUTPUT
 
   - platform: gpio
-    id: tank3_dc_mode
-    name: "Tank 3 DC Mode"
+    id: tank3_dc_control
+    name: "Tank 3 Control"
     icon: mdi:water
     pin:
       mcp23xxx: io_expander
@@ -894,7 +960,7 @@ switch:
     name: "CAN Termination"
     id: can_termination
     icon: mdi:resistor
-    pin: GPIO27
+    pin: GPIO23
 
 # =============================================================================
 # Climate - Truma Heater
