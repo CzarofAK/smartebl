@@ -32,3 +32,7 @@ firmware/
 # Documentation PDFs
 E-Block.pdf
 Smart EBL V1.0 Datenblatt.pdf
+
+# KiCad files
+E-Block.kicad_sch
+E-Block.kicad_pcb

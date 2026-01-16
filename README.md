@@ -53,7 +53,7 @@
 | CAN Bus | SN65HVD234 | 2x Mini-Fit | RV-C / ISO 11898-2 |
 | LIN Bus | TJA1021T | RJ12 | Truma / ISO 17987 |
 | Display | - | RJ45 | Nextion Serial |
-| I2C | - | Internal | 4x ADS7830 ADCs |
+| I2C | MCP23017, 4x ADS7830 | Internal | IO Expander + ADCs |
 
 ### Switching Groups
 
@@ -154,8 +154,13 @@ password: "your-ota-password"
 ### basics.yaml Template
 
 ```yaml
+api:
+  encryption:
+    key: !secret api_encryption_key
+
 ota:
   - platform: esphome
+    id: ota_esphome
     password: !secret password
 
 wifi:
@@ -180,40 +185,57 @@ time:
 
 ---
 
-## GPIO Mapping
+## Hardware Architecture
+
+### Relay Control via MCP23017 IO Expander
+
+All relay control is handled via the **MCP23017 (U17)** I2C IO expander at address **0x20**, driving the **ULN2803A (U8)** Darlington array which powers the relay coils.
+
+```
+ESP32 GPIO21/22 (I2C) --> MCP23017 (0x20) --> ULN2803A --> Relay Coils
+```
+
+### MCP23017 Pin Mapping
+
+| Pin | Signal | Function |
+|-----|--------|----------|
+| GPA0 | 12V_ON | K3 bistable relay ON coil (12V group) |
+| GPA1 | 12V_OFF | K3 bistable relay OFF coil |
+| GPA2 | AUX_ON | K7 bistable relay ON coil (AUX group) |
+| GPA3 | AUX_OFF | K7 bistable relay OFF coil |
+| GPA4 | Light_ON | K8 bistable relay ON coil (Light group) |
+| GPA5 | Light_OFF | K8 bistable relay OFF coil |
+| GPA6 | Pump_ON | K4 bistable relay ON coil (Water pump) |
+| GPA7 | Pump_OFF | K4 bistable relay OFF coil |
+| GPB0 | EisEx | EisEx heater output (via BTS6143D) |
+| GPB1 | D+_Relay | D+ programmable output |
+| GPB2 | Fridge | Fridge control relay |
+
+### ESP32 GPIO Mapping
 
 | GPIO | Function | Notes |
 |------|----------|-------|
 | GPIO0 | Mode Button | Pull-up, active low (boot) |
-| GPIO2 | CAN Termination | Software switchable |
 | GPIO4 | CAN RX | SN65HVD234 |
 | GPIO5 | CAN TX | SN65HVD234 |
-| GPIO12 | LIN RX | TJA1021T (Truma) |
-| GPIO13 | LIN TX | TJA1021T (Truma) |
-| GPIO14 | 12V Relay ON | via ULN2803A |
-| GPIO15 | EisEx Output | via BTS6143D |
-| GPIO16 | Nextion RX | UART1 |
-| GPIO17 | Nextion TX | UART1 |
-| GPIO21 | I2C SDA | ADS7830 ADCs |
-| GPIO22 | I2C SCL | ADS7830 ADCs |
-| GPIO25 | AUX Relay OFF | via ULN2803A |
-| GPIO26 | AUX Relay ON | via ULN2803A |
-| GPIO27 | 12V Relay OFF | via ULN2803A |
-| GPIO32 | Pump Relay ON | Bistable |
-| GPIO33 | Pump Relay OFF | Bistable |
+| GPIO16 | LIN/Nextion RX | UART1 (TJA1021T) |
+| GPIO17 | LIN/Nextion TX | UART1 (TJA1021T) |
+| GPIO21 | I2C SDA | MCP23017 + ADS7830 ADCs |
+| GPIO22 | I2C SCL | MCP23017 + ADS7830 ADCs |
 | GPIO34 | D+ Signal | Input only |
 | GPIO35 | Shore Power | Input only |
-| GPIO36 | Pump ON Button | Input only |
-| GPIO39 | Pump OFF Button | Input only |
+| GPIO36 | Input (VP) | Input only |
+| GPIO39 | Input (VN) | Input only |
 
-### I2C ADC Addresses
+### I2C Bus Devices
 
-| Address | Function |
-|---------|----------|
-| 0x48 | Fuse group 1 (Battery, Starter, F4-F8, F1) |
-| 0x49 | Fuse group 2 (F2-F3, F9-F14) |
-| 0x4A | Fuse group 3 (F15-F16, outputs) |
-| 0x4B | Tanks and inputs (water levels, Duocontrol) |
+| Address | Device | Function |
+|---------|--------|----------|
+| 0x20 | MCP23017 (U17) | IO Expander - Relay control |
+| 0x48 | ADS7830 (U4) | Fuse monitoring group 1 |
+| 0x49 | ADS7830 (U5) | Fuse monitoring group 2 |
+| 0x4A | ADS7830 (U6) | Input monitoring |
+| 0x4B | ADS7830 (U7) | Output monitoring |
 
 ---
 

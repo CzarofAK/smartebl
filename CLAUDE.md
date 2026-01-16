@@ -140,6 +140,7 @@ Self-latching, manual override on relay, direct control inputs available.
 | U11 | CP2102N | USB-UART bridge |
 | U14 | TJA1021T | LIN transceiver |
 | U15 | ESP32-WROVER-IE-N16R8 | Main MCU |
+| U17 | MCP23017 | I2C 16-bit IO expander (relay control) |
 
 ### Relays
 | Ref | Part | Type | Function |
@@ -229,53 +230,92 @@ esphome upload smart-ebl.yaml --device smart-ebl.local
 
 ## Development Notes
 
-### GPIO Mapping (from schematic analysis)
+### ESP32 GPIO Mapping (from schematic analysis)
 
 | GPIO | Function | Notes |
 |------|----------|-------|
 | GPIO0 | BOOT / Mode Button | Pull-up, active low |
-| GPIO1 | TXD0 | USB programming |
-| GPIO2 | CAN Termination | Output |
-| GPIO3 | RXD0 | USB programming |
-| GPIO4 | CAN RX | esp32_can |
-| GPIO5 | CAN TX | esp32_can |
-| GPIO12 | Relay Light OFF coil | via ULN2803A |
-| GPIO13 | Relay Light ON coil | via ULN2803A |
-| GPIO14 | Relay 12V ON coil | via ULN2803A |
-| GPIO15 | EisEx output | via BTS6143D |
-| GPIO16 | Nextion RX | UART1 |
-| GPIO17 | Nextion TX | UART1 |
-| GPIO21 | I2C SDA | ADCs |
-| GPIO22 | I2C SCL | ADCs |
-| GPIO25 | LIN TX / AUX OFF coil | TJA1021T |
-| GPIO26 | LIN RX / AUX ON coil | TJA1021T |
-| GPIO27 | Relay 12V OFF coil | via ULN2803A |
-| GPIO32 | Pump ON coil | Bistable relay |
-| GPIO33 | Pump OFF coil | Bistable relay |
+| GPIO1 | TXD0 | USB programming (CP2102N) |
+| GPIO3 | RXD0 | USB programming (CP2102N) |
+| GPIO4 | CAN RX | esp32_can (SN65HVD234) |
+| GPIO5 | CAN TX | esp32_can (SN65HVD234) |
+| GPIO16 | UART1 RX | LIN bus / Nextion display |
+| GPIO17 | UART1 TX | LIN bus / Nextion display |
+| GPIO21 | I2C SDA | ADCs + MCP23017 |
+| GPIO22 | I2C SCL | ADCs + MCP23017 |
 | GPIO34 | D+ Signal | Input only |
 | GPIO35 | Shore Power | Input only |
-| GPIO36 | Pump ON Button | Input only (VP) |
-| GPIO39 | Pump OFF Button | Input only (VN) |
+| GPIO36 | Input (VP) | Input only |
+| GPIO39 | Input (VN) | Input only |
 
-### I2C ADC Addresses
-- `0x48` - Fuse monitoring group 1
-- `0x49` - Fuse monitoring group 2
-- `0x4A` - Fuse monitoring group 3
-- `0x4B` - Tank sensors
+### MCP23017 IO Expander (U17) - Address 0x20
+
+All relay control is via MCP23017 -> ULN2803A (U8) -> Relay coils.
+
+**Port A (GPA0-GPA7) - Relay Control:**
+| Pin | Signal | Function |
+|-----|--------|----------|
+| GPA0 | 12V_ON | K3 bistable relay ON coil (12V group) |
+| GPA1 | 12V_OFF | K3 bistable relay OFF coil |
+| GPA2 | AUX_ON | K7 bistable relay ON coil (AUX group) |
+| GPA3 | AUX_OFF | K7 bistable relay OFF coil |
+| GPA4 | Light_ON | K8 bistable relay ON coil (Light group) |
+| GPA5 | Light_OFF | K8 bistable relay OFF coil |
+| GPA6 | Pump_ON | K4 bistable relay ON coil (Water pump) |
+| GPA7 | Pump_OFF | K4 bistable relay OFF coil |
+
+**Port B (GPB0-GPB7) - Additional Outputs:**
+| Pin | Signal | Function |
+|-----|--------|----------|
+| GPB0 | EisEx | EisEx heater (via BTS6143D) |
+| GPB1 | D+_Relay | D+ programmable output relay |
+| GPB2 | Fridge | Fridge control relay (K5/K6) |
+| GPB3-GPB7 | Reserved | Future expansion |
+
+### I2C Bus Devices
+
+| Address | Device | Function |
+|---------|--------|----------|
+| 0x20 | MCP23017 (U17) | IO Expander - Relay control |
+| 0x48 | ADS7830 (U4) | Fuse monitoring group 1 |
+| 0x49 | ADS7830 (U5) | Fuse monitoring group 2 |
+| 0x4A | ADS7830 (U6) | Input monitoring |
+| 0x4B | ADS7830 (U7) | Output monitoring |
 
 ### Bistable Relay Control
-Bistable (latching) relays require a pulse to toggle state:
+Bistable (latching) relays require a pulse to toggle state. Controlled via MCP23017:
 ```yaml
-turn_on_action:
-  - output.turn_on: relay_on_coil
-  - delay: 50ms
-  - output.turn_off: relay_on_coil
+# Example: Water pump relay via MCP23017
+- platform: gpio
+  id: relay_pump_on_coil
+  pin:
+    mcp23xxx: io_expander
+    number: 6  # GPA6
+    mode: OUTPUT
+  internal: true
+  on_turn_on:
+    - delay: 100ms
+    - switch.turn_off: relay_pump_on_coil
+
+# Template switch for user control
+- platform: template
+  name: "Water Pump"
+  turn_on_action:
+    - switch.turn_on: relay_pump_on_coil
+  turn_off_action:
+    - switch.turn_on: relay_pump_off_coil
 ```
 
 ## Session Notes
+
+### 2025-01-16
+- **CRITICAL FIX:** Discovered relay control uses MCP23017 IO expander (U17), not direct ESP32 GPIO
+- Parsed KiCad schematic (E-Block.kicad_sch) using kiutils Python library
+- Completely rewrote smart-ebl.yaml with correct MCP23017-based relay control
+- Updated hardware documentation with accurate pin mappings
+- Signal chain: ESP32 -> I2C -> MCP23017 (0x20) -> ULN2803A (U8) -> Relay coils
 
 ### 2025-01-12
 - Project initialized with ESPHome framework
 - Created custom components: ads7830, lin_bus
 - Main configuration in smart-ebl.yaml
-- GPIO mapping needs verification against actual hardware

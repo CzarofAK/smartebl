@@ -1,11 +1,14 @@
+# =============================================================================
 # Smart EBL - ESPHome Configuration
-# Central Electroblock for Motorhomes
-# Hardware: ESP32-WROVER-IE-N16R8
+# =============================================================================
+# Central electrical control unit for motorhomes/campervans
+# Hardware: ESP32-WROVER-IE-N16R8 with MCP23017 IO expander
+# Author: Ingenieurbüro Jan Morawek, Munich
+# =============================================================================
 
 substitutions:
   name: smart-ebl
-  friendly_name: "Smart EBL"
-<<: !include .basics.yaml
+  friendly_name: Smart EBL
 
 esphome:
   name: ${name}
@@ -16,881 +19,758 @@ esphome:
 
 esp32:
   board: esp-wrover-kit
+  flash_size: 16MB
   framework:
     type: esp-idf
     version: recommended
-  flash_size: 16MB
 
-# Enable Home Assistant API
-api:
-  encryption:
-    key: !secret api_encryption_key
-
-# Bluetooth proxy for BLE devices (optional)
-# esp32_ble_tracker:
-# bluetooth_proxy:
+# Include external basics (wifi, ota, api, etc.)
+<<: !include .basics.yaml
 
 # =============================================================================
 # External Components
 # =============================================================================
 
 external_components:
+  # Custom ADS7830 8-bit ADC component
   - source:
       type: local
       path: components
-  - source: github://skrebber/esphome-truma_inetbox
-    components: ["truma_inetbox"]
+    components: [ads7830]
+
+  # Truma iNetbox LIN integration
+  - source:
+      type: git
+      url: https://github.com/skrebber/esphome-truma_inetbox
+      ref: main
+    components: [truma_inetbox]
 
 # =============================================================================
 # I2C Bus Configuration
 # =============================================================================
+# All ADCs (4x ADS7830) and MCP23017 IO expander share this bus
 
 i2c:
   sda: GPIO21
   scl: GPIO22
   scan: true
-  frequency: 400kHz
+  frequency: 100kHz
+
+# =============================================================================
+# MCP23017 IO Expander (U17) - Relay Control
+# =============================================================================
+# I2C Address: 0x20 (A0=A1=A2=GND)
+# GPA0-GPA7: Relay coil control (active high via ULN2803A)
+# GPB0-GPB5: Additional outputs (EisEx, D+, Fridge, Tank DC control)
+
+mcp23017:
+  - id: io_expander
+    address: 0x20
+
+# =============================================================================
+# ADS7830 8-bit ADC Hubs
+# =============================================================================
+
+ads7830:
+  - id: adc_fuse_group1
+    address: 0x48   # U4 - Fuses F1-F8
+  - id: adc_fuse_group2
+    address: 0x49   # U5 - Fuses F9-F16
+  - id: adc_inputs
+    address: 0x4A   # U6 - Tank sensors, inputs
+  - id: adc_outputs
+    address: 0x4B   # U7 - Output monitoring, battery
+
+# =============================================================================
+# CAN Bus (RV-C Protocol)
+# =============================================================================
+
+canbus:
+  - platform: esp32_can
+    id: can_bus
+    tx_pin: GPIO5
+    rx_pin: GPIO4
+    can_id: 0
+    bit_rate: 250kbps
 
 # =============================================================================
 # UART Configuration
 # =============================================================================
 
 uart:
-  # LIN Bus via TJA1021T for Truma CP Plus
-  - id: uart_lin
-    tx_pin: GPIO12
-    rx_pin: GPIO13
+  # LIN Bus for Truma CP Plus (via TJA1021T U14)
+  - id: lin_uart
+    tx_pin: GPIO17
+    rx_pin: GPIO16
     baud_rate: 9600
+    data_bits: 8
+    parity: NONE
     stop_bits: 2
 
 # =============================================================================
-# CAN Bus Configuration (RV-C)
-# =============================================================================
-
-canbus:
-  - platform: esp32_can
-    id: can_bus
-    tx_pin: GPIO15
-    rx_pin: GPIO14
-    can_id: 0x100
-    bit_rate: 250kbps
-    on_frame:
-      - can_id: 0x0
-        can_id_mask: 0x0
-        then:
-          - lambda: |-
-              // RV-C protocol handler - receive all frames
-              // x is std::vector<uint8_t> containing the frame data
-              ESP_LOGD("can", "Received CAN frame with %d bytes", x.size());
-
-# =============================================================================
-# Truma iNetbox (CP Plus Heater Control via LIN)
+# Truma iNetbox Integration
 # =============================================================================
 
 truma_inetbox:
   id: truma
-  uart_id: uart_lin
-  on_heater_message:
-    - lambda: |-
-        ESP_LOGD("truma", "Received heater message");
-
-# Truma Climate Controls
-climate:
-  # Room heating
-  - platform: truma_inetbox
-    truma_inetbox_id: truma
-    type: ROOM
-    name: "Truma Room Heating"
-    id: truma_room
-
-  # Water heating
-  - platform: truma_inetbox
-    truma_inetbox_id: truma
-    type: WATER
-    name: "Truma Water Heating"
-    id: truma_water
-
-# Truma Number Controls
-number:
-  # Target room temperature
-  - platform: truma_inetbox
-    truma_inetbox_id: truma
-    type: TARGET_ROOM_TEMPERATURE
-    name: "Truma Target Room Temp"
-    id: truma_target_room_temp
-
-  # Target water temperature
-  - platform: truma_inetbox
-    truma_inetbox_id: truma
-    type: TARGET_WATER_TEMPERATURE
-    name: "Truma Target Water Temp"
-    id: truma_target_water_temp
-
-  # Electric power level (for mix mode)
-  - platform: truma_inetbox
-    truma_inetbox_id: truma
-    type: ELECTRIC_POWER_LEVEL
-    name: "Truma Electric Power Level"
-    id: truma_electric_power
-
-# Truma Select Controls
-select:
-  # Energy mix selection (gas heaters)
-  - platform: truma_inetbox
-    truma_inetbox_id: truma
-    type: HEATER_ENERGY_MIX_GAS
-    name: "Truma Energy Mix"
-    id: truma_energy_mix
-
-  # Fan mode for Combi heaters
-  - platform: truma_inetbox
-    truma_inetbox_id: truma
-    type: HEATER_FAN_MODE_COMBI
-    name: "Truma Fan Mode"
-    id: truma_fan_mode
+  uart_id: lin_uart
 
 # =============================================================================
-# ADS7830 ADC Hubs
-# =============================================================================
-
-ads7830:
-  - id: adc_0x48
-    address: 0x48
-  - id: adc_0x49
-    address: 0x49
-  - id: adc_0x4A
-    address: 0x4A
-  - id: adc_0x4B
-    address: 0x4B
-
-# =============================================================================
-# ADC 1 (0x48)
+# Sensors - Fuse Voltage Monitoring
 # =============================================================================
 
 sensor:
-# Permanent fuses group
-  # Fuse F8 - output 1 (30A)
-  - platform: ads7830
-    ads7830_id: adc_0x48
-    channel: 0
-    name: "Fuse F8 Voltage"
-    id: fuse_f8_voltage
-    unit_of_measurement: "V"
-    accuracy_decimals: 2
-    update_interval: 5s
-  
-  # Fuse F7 - output 2 (30A)
-  - platform: ads7830
-    ads7830_id: adc_0x48
-    channel: 1
-    name: "Fuse F7 Voltage"
-    id: fuse_f7_voltage
-    unit_of_measurement: "V"
-    accuracy_decimals: 2
-    update_interval: 5s
-  
-  # Fuse F6 - output 3 (30A)
-  - platform: ads7830
-    ads7830_id: adc_0x48
-    channel: 2
-    name: "Fuse F6 Voltage"
-    id: fuse_f6_voltage
-    unit_of_measurement: "V"
-    accuracy_decimals: 2
-    update_interval: 5s
+  # ---------------------------------------------------------------------------
+  # Fuse Group 1 (U4 - 0x48) - Fuses F1-F8
+  # ---------------------------------------------------------------------------
 
-# Light fuses group
-  # Fuse F5 - output 1 (xxA)
   - platform: ads7830
-    ads7830_id: adc_0x48
-    channel: 3
-    name: "Fuse F5 Voltage"
-    id: fuse_f5_voltage
-    unit_of_measurement: "V"
-    accuracy_decimals: 2
-    update_interval: 5s
-
-  # Fuse F4 - output 2 (xxA)
-  - platform: ads7830
-    ads7830_id: adc_0x48
-    channel: 4
-    name: "Fuse F4 Voltage"
-    id: fuse_f4_voltage
-    unit_of_measurement: "V"
-    accuracy_decimals: 2
-    update_interval: 5s
-
-  # Fuse F3 - Awning light (10A)
-  - platform: ads7830
-    ads7830_id: adc_0x48
-    channel: 5
-    name: "Fuse F3 Voltage"
-    id: fuse_f3_voltage
-    unit_of_measurement: "V"
-    accuracy_decimals: 2
-    update_interval: 5s
-
-  # Fuse F2 - Contour light (10A)
-  - platform: ads7830
-    ads7830_id: adc_0x48
-    channel: 6
-    name: "Fuse F2 Voltage"
-    id: fuse_f2_voltage
-    unit_of_measurement: "V"
-    accuracy_decimals: 2
-    update_interval: 5s
-
-# Pump fuses group
-  # Fuse F1 - Water pump (10A)
-  - platform: ads7830
-    ads7830_id: adc_0x48
+    ads7830_id: adc_fuse_group1
     channel: 7
     name: "Fuse F1 Voltage"
     id: fuse_f1_voltage
     unit_of_measurement: "V"
     accuracy_decimals: 2
     update_interval: 5s
+    filters:
+      - multiply: 5.545  # Voltage divider calibration
 
-# -----------------------------------------------------------------------------
-# ADC 2 (0x49)
-# -----------------------------------------------------------------------------
-
-# Fridge fuses group
-  # Fuse F9 - Fridge permanent (30A)
   - platform: ads7830
-    ads7830_id: adc_0x49
+    ads7830_id: adc_fuse_group1
+    channel: 6
+    name: "Fuse F2 Voltage"
+    id: fuse_f2_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 5s
+    filters:
+      - multiply: 5.545
+
+  - platform: ads7830
+    ads7830_id: adc_fuse_group1
+    channel: 5
+    name: "Fuse F3 Voltage"
+    id: fuse_f3_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 5s
+    filters:
+      - multiply: 5.545
+
+  - platform: ads7830
+    ads7830_id: adc_fuse_group1
+    channel: 4
+    name: "Fuse F4 Voltage"
+    id: fuse_f4_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 5s
+    filters:
+      - multiply: 5.545
+
+  - platform: ads7830
+    ads7830_id: adc_fuse_group1
+    channel: 3
+    name: "Fuse F5 Voltage"
+    id: fuse_f5_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 5s
+    filters:
+      - multiply: 5.545
+
+  - platform: ads7830
+    ads7830_id: adc_fuse_group1
+    channel: 2
+    name: "Fuse F6 Voltage"
+    id: fuse_f6_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 5s
+    filters:
+      - multiply: 5.545
+
+  - platform: ads7830
+    ads7830_id: adc_fuse_group1
+    channel: 1
+    name: "Fuse F7 Voltage"
+    id: fuse_f7_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 5s
+    filters:
+      - multiply: 5.545
+
+  - platform: ads7830
+    ads7830_id: adc_fuse_group1
+    channel: 0
+    name: "Fuse F8 Voltage"
+    id: fuse_f8_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 5s
+    filters:
+      - multiply: 5.545
+
+  # ---------------------------------------------------------------------------
+  # Fuse Group 2 (U5 - 0x49) - Fuses F9-F16
+  # ---------------------------------------------------------------------------
+
+  - platform: ads7830
+    ads7830_id: adc_fuse_group2
     channel: 0
     name: "Fuse F9 Voltage"
     id: fuse_f9_voltage
     unit_of_measurement: "V"
     accuracy_decimals: 2
     update_interval: 5s
+    filters:
+      - multiply: 5.545
 
-  # Fuse F10 - Fridge D+ controlled (30A)
   - platform: ads7830
-    ads7830_id: adc_0x49
+    ads7830_id: adc_fuse_group2
     channel: 1
     name: "Fuse F10 Voltage"
     id: fuse_f10_voltage
     unit_of_measurement: "V"
     accuracy_decimals: 2
     update_interval: 5s
+    filters:
+      - multiply: 5.545
 
-# AUX fuses group
-  # Fuse F11 - AUX output 1 (30A)
   - platform: ads7830
-    ads7830_id: adc_0x49
+    ads7830_id: adc_fuse_group2
     channel: 2
     name: "Fuse F11 Voltage"
     id: fuse_f11_voltage
     unit_of_measurement: "V"
     accuracy_decimals: 2
     update_interval: 5s
+    filters:
+      - multiply: 5.545
 
-  # Fuse F12 - AUX output 2 (30A)
   - platform: ads7830
-    ads7830_id: adc_0x49
+    ads7830_id: adc_fuse_group2
     channel: 3
     name: "Fuse F12 Voltage"
     id: fuse_f12_voltage
     unit_of_measurement: "V"
     accuracy_decimals: 2
     update_interval: 5s
+    filters:
+      - multiply: 5.545
 
-  # Fuse F13 - AUX output 3 (30A)
   - platform: ads7830
-    ads7830_id: adc_0x49
+    ads7830_id: adc_fuse_group2
     channel: 4
     name: "Fuse F13 Voltage"
     id: fuse_f13_voltage
     unit_of_measurement: "V"
     accuracy_decimals: 2
     update_interval: 5s
+    filters:
+      - multiply: 5.545
 
-# 12V fuses group
-  # Fuse F14 - 12V output 1 (30A)
   - platform: ads7830
-    ads7830_id: adc_0x49
+    ads7830_id: adc_fuse_group2
     channel: 5
     name: "Fuse F14 Voltage"
     id: fuse_f14_voltage
     unit_of_measurement: "V"
     accuracy_decimals: 2
     update_interval: 5s
+    filters:
+      - multiply: 5.545
 
-  # Fuse F15 - 12V output 2 (30A)
   - platform: ads7830
-    ads7830_id: adc_0x49
+    ads7830_id: adc_fuse_group2
     channel: 6
     name: "Fuse F15 Voltage"
     id: fuse_f15_voltage
     unit_of_measurement: "V"
     accuracy_decimals: 2
     update_interval: 5s
+    filters:
+      - multiply: 5.545
 
-  # Fuse F16 - 12V output 3 (30A)
   - platform: ads7830
-    ads7830_id: adc_0x49
+    ads7830_id: adc_fuse_group2
     channel: 7
     name: "Fuse F16 Voltage"
     id: fuse_f16_voltage
     unit_of_measurement: "V"
     accuracy_decimals: 2
     update_interval: 5s
+    filters:
+      - multiply: 5.545
 
-# -----------------------------------------------------------------------------
-# ADC 3 (0x4A)
-# -----------------------------------------------------------------------------
+  # ---------------------------------------------------------------------------
+  # Input Monitoring (U6 - 0x4A)
+  # ---------------------------------------------------------------------------
 
-# Tank level sensors
-  # Fresh water tank level
   - platform: ads7830
-    ads7830_id: adc_0x4A
+    ads7830_id: adc_inputs
     channel: 0
-    name: "Fresh Water Tank Voltage"
-    id: tank_fresh_voltage
+    name: "Tank 1 Level"
+    id: tank1_level
     unit_of_measurement: "%"
     accuracy_decimals: 0
-    filters:
-      - calibrate_linear:
-          - 0.0 -> 0
-          - 3.3 -> 100
     update_interval: 10s
+    filters:
+      - multiply: 0.392  # Scale 0-255 to 0-100%
 
-  # Grey water tank level
   - platform: ads7830
-    ads7830_id: adc_0x4A
+    ads7830_id: adc_inputs
     channel: 1
-    name: "Grey Water Tank Voltage"
-    id: tank_grey_voltage
+    name: "Tank 2 Level"
+    id: tank2_level
     unit_of_measurement: "%"
     accuracy_decimals: 0
-    filters:
-      - calibrate_linear:
-          - 0.0 -> 0
-          - 3.3 -> 100
     update_interval: 10s
+    filters:
+      - multiply: 0.392
 
-  # Black water tank level
   - platform: ads7830
-    ads7830_id: adc_0x4A
+    ads7830_id: adc_inputs
     channel: 2
-    name: "Black Water Tank Voltage"
-    id: tank_black_voltage
+    name: "Tank 3 Level"
+    id: tank3_level
     unit_of_measurement: "%"
     accuracy_decimals: 0
+    update_interval: 10s
     filters:
-      - calibrate_linear:
-          - 0.0 -> 0
-          - 3.3 -> 100
-    update_interval: 10s
+      - multiply: 0.392
 
-# Miscellaneous sensors
-  # +3V3 reference voltage
   - platform: ads7830
-    ads7830_id: adc_0x4A
+    ads7830_id: adc_inputs
     channel: 3
-    name: "3.3V Voltage"
-    id: voltage_3v3
+    name: "AC Charger Detection"
+    id: ac_charger_voltage
     unit_of_measurement: "V"
     accuracy_decimals: 2
-    update_interval: 60s
-    internal: true
+    update_interval: 5s
+    filters:
+      - multiply: 5.545
 
-  # Shore power voltage level
   - platform: ads7830
-    ads7830_id: adc_0x4A
+    ads7830_id: adc_inputs
     channel: 4
-    name: "Shore Power Voltage"
-    id: shore_power_voltage
-    unit_of_measurement: "V"
-    accuracy_decimals: 2
-    update_interval: 10s
-
-  # Duocontrol gas system status
-  - platform: ads7830
-    ads7830_id: adc_0x4A
-    channel: 5
-    name: "Duocontrol Voltage"
+    name: "DuoControl Status"
     id: duocontrol_voltage
     unit_of_measurement: "V"
     accuracy_decimals: 2
-    update_interval: 10s
+    update_interval: 5s
+    filters:
+      - multiply: 5.545
 
-  # D+ voltage level
   - platform: ads7830
-    ads7830_id: adc_0x4A
-    channel: 6
-    name: "D+ Voltage"
+    ads7830_id: adc_inputs
+    channel: 5
+    name: "D+ Signal Voltage"
     id: dplus_voltage
     unit_of_measurement: "V"
     accuracy_decimals: 2
-    update_interval: 10s
+    update_interval: 5s
+    filters:
+      - multiply: 5.545
 
-  # Fridge ABS voltage level
+  # ---------------------------------------------------------------------------
+  # Output Monitoring (U7 - 0x4B)
+  # ---------------------------------------------------------------------------
+
   - platform: ads7830
-    ads7830_id: adc_0x4A
-    channel: 7
-    name: "Fridge ABS Voltage"
-    id: fridge_abs_voltage
-    unit_of_measurement: "V"
-    accuracy_decimals: 2
-    update_interval: 10s
-
-# -----------------------------------------------------------------------------
-# ADC 4 (0x4B)
-# -----------------------------------------------------------------------------
-
-# Miscellaneous sensors
-  # Battery voltage (via voltage divider)
-  - platform: ads7830
-    ads7830_id: adc_0x4B
+    ads7830_id: adc_outputs
     channel: 0
-    name: "Battery Voltage"
-    id: battery_voltage
-    unit_of_measurement: "V"
-    accuracy_decimals: 2
-    filters:
-      - calibrate_linear:
-          - 0.0 -> 0.0
-          - 3.3 -> 16.0  # Adjust based on voltage divider ratio
-    update_interval: 1s
-
-  # Starter battery voltage
-  - platform: ads7830
-    ads7830_id: adc_0x4B
-    channel: 1
     name: "Starter Battery Voltage"
-    id: starter_voltage
+    id: starter_battery_voltage
     unit_of_measurement: "V"
     accuracy_decimals: 2
+    update_interval: 5s
     filters:
-      - calibrate_linear:
-          - 0.0 -> 0.0
-          - 3.3 -> 16.0
-    update_interval: 5s
+      - multiply: 5.545
 
-  # Output monitoring - Light group output
   - platform: ads7830
-    ads7830_id: adc_0x4B
-    channel: 2
+    ads7830_id: adc_outputs
+    channel: 1
     name: "Light Output Voltage"
-    id: light_out_voltage
+    id: light_output_voltage
     unit_of_measurement: "V"
     accuracy_decimals: 2
     update_interval: 5s
+    filters:
+      - multiply: 5.545
 
-  # Output monitoring - 12V group output
   - platform: ads7830
-    ads7830_id: adc_0x4B
+    ads7830_id: adc_outputs
+    channel: 2
+    name: "12V User Output Voltage"
+    id: user_12v_output_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 5s
+    filters:
+      - multiply: 5.545
+
+  - platform: ads7830
+    ads7830_id: adc_outputs
     channel: 3
-    name: "12V Output Voltage"
-    id: voltage_12v_out
+    name: "12V AUX Output Voltage"
+    id: aux_12v_output_voltage
     unit_of_measurement: "V"
     accuracy_decimals: 2
     update_interval: 5s
+    filters:
+      - multiply: 5.545
 
-  # Output monitoring - AUX group output
   - platform: ads7830
-    ads7830_id: adc_0x4B
+    ads7830_id: adc_outputs
     channel: 4
-    name: "AUX Output Voltage"
-    id: aux_out_voltage
-    unit_of_measurement: "V"
-    accuracy_decimals: 2
-    update_interval: 5s
-
-  # Output monitoring - Pump output
-  - platform: ads7830
-    ads7830_id: adc_0x4B
-    channel: 5
     name: "Pump Output Voltage"
-    id: pump_out_voltage
+    id: pump_output_voltage
     unit_of_measurement: "V"
     accuracy_decimals: 2
     update_interval: 5s
+    filters:
+      - multiply: 5.545
 
-  # Output monitoring - Awning Light
   - platform: ads7830
-    ads7830_id: adc_0x4B
+    ads7830_id: adc_outputs
+    channel: 5
+    name: "Light L Output Voltage"
+    id: light_l_output_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 5s
+    filters:
+      - multiply: 5.545
+
+  - platform: ads7830
+    ads7830_id: adc_outputs
     channel: 6
-    name: "Awning Light Output Voltage"
-    id: awning_light_out_voltage
+    name: "Contour Light Output Voltage"
+    id: contour_light_output_voltage
     unit_of_measurement: "V"
     accuracy_decimals: 2
     update_interval: 5s
-
-  # Output monitoring - Contour Light
-  - platform: ads7830
-    ads7830_id: adc_0x4B
-    channel: 7
-    name: "Contour Light Output Voltage"
-    id: contour_light_out_voltage
-    unit_of_measurement: "V"
-    accuracy_decimals: 2
-    update_interval: 10s
-    internal: true
-
-  # -----------------------------------------------------------------------------
-  # Fuse Status Binary Sensors (derived from voltage)
-  # -----------------------------------------------------------------------------
-
-  # WiFi signal strength
-  - platform: wifi_signal
-    name: "WiFi Signal"
-    update_interval: 60s
-
-  # ESP32 internal temperature
-  - platform: internal_temperature
-    name: "ESP32 Temperature"
-    update_interval: 60s
-
-  # Uptime sensor
-  - platform: uptime
-    name: "Uptime"
-    update_interval: 60s
+    filters:
+      - multiply: 5.545
 
   # ---------------------------------------------------------------------------
-  # Truma Heater Sensors
+  # Truma Sensors
   # ---------------------------------------------------------------------------
 
-  # Current room temperature
   - platform: truma_inetbox
     truma_inetbox_id: truma
     type: CURRENT_ROOM_TEMPERATURE
-    name: "Truma Current Room Temp"
-    id: truma_current_room_temp
+    name: "Truma Room Temperature"
+    id: truma_room_temp
 
-  # Current water temperature
   - platform: truma_inetbox
     truma_inetbox_id: truma
     type: CURRENT_WATER_TEMPERATURE
-    name: "Truma Current Water Temp"
-    id: truma_current_water_temp
+    name: "Truma Water Temperature"
+    id: truma_water_temp
 
-  # Heating mode
-  - platform: truma_inetbox
-    truma_inetbox_id: truma
-    type: HEATING_MODE
-    name: "Truma Heating Mode"
-    id: truma_heating_mode
-
-  # Operating status
-  - platform: truma_inetbox
-    truma_inetbox_id: truma
-    type: OPERATING_STATUS
-    name: "Truma Operating Status"
-    id: truma_operating_status
-
-  # Heater error code
   - platform: truma_inetbox
     truma_inetbox_id: truma
     type: HEATER_ERROR_CODE
     name: "Truma Error Code"
     id: truma_error_code
 
+  # ---------------------------------------------------------------------------
+  # System Diagnostics
+  # ---------------------------------------------------------------------------
+
+  - platform: internal_temperature
+    name: "ESP32 Temperature"
+    update_interval: 60s
+
+  - platform: uptime
+    name: "Uptime"
+    update_interval: 60s
+
+  - platform: wifi_signal
+    name: "WiFi Signal"
+    update_interval: 60s
+
 # =============================================================================
-# Fuse Status (Binary Sensors derived from voltage readings)
+# Binary Sensors
 # =============================================================================
 
 binary_sensor:
-  # Fuse blown detection - voltage below threshold indicates blown fuse
+  # ---------------------------------------------------------------------------
+  # Fuse Status (OK when voltage > 1V)
+  # ---------------------------------------------------------------------------
+
   - platform: template
     name: "Fuse F1 OK"
     id: fuse_f1_ok
-    lambda: |-
-      return id(fuse_f1_voltage).state > 1.0;
+    lambda: return id(fuse_f1_voltage).state > 1.0;
     device_class: power
 
   - platform: template
     name: "Fuse F2 OK"
     id: fuse_f2_ok
-    lambda: |-
-      return id(fuse_f2_voltage).state > 1.0;
+    lambda: return id(fuse_f2_voltage).state > 1.0;
     device_class: power
 
   - platform: template
     name: "Fuse F3 OK"
     id: fuse_f3_ok
-    lambda: |-
-      return id(fuse_f3_voltage).state > 1.0;
+    lambda: return id(fuse_f3_voltage).state > 1.0;
     device_class: power
 
   - platform: template
     name: "Fuse F4 OK"
     id: fuse_f4_ok
-    lambda: |-
-      return id(fuse_f4_voltage).state > 1.0;
+    lambda: return id(fuse_f4_voltage).state > 1.0;
     device_class: power
 
   - platform: template
     name: "Fuse F5 OK"
     id: fuse_f5_ok
-    lambda: |-
-      return id(fuse_f5_voltage).state > 1.0;
+    lambda: return id(fuse_f5_voltage).state > 1.0;
     device_class: power
 
   - platform: template
     name: "Fuse F6 OK"
     id: fuse_f6_ok
-    lambda: |-
-      return id(fuse_f6_voltage).state > 1.0;
+    lambda: return id(fuse_f6_voltage).state > 1.0;
     device_class: power
 
   - platform: template
     name: "Fuse F7 OK"
     id: fuse_f7_ok
-    lambda: |-
-      return id(fuse_f7_voltage).state > 1.0;
+    lambda: return id(fuse_f7_voltage).state > 1.0;
     device_class: power
 
   - platform: template
     name: "Fuse F8 OK"
     id: fuse_f8_ok
-    lambda: |-
-      return id(fuse_f8_voltage).state > 1.0;
+    lambda: return id(fuse_f8_voltage).state > 1.0;
     device_class: power
 
   - platform: template
     name: "Fuse F9 OK"
     id: fuse_f9_ok
-    lambda: |-
-      return id(fuse_f9_voltage).state > 1.0;
+    lambda: return id(fuse_f9_voltage).state > 1.0;
     device_class: power
 
   - platform: template
     name: "Fuse F10 OK"
     id: fuse_f10_ok
-    lambda: |-
-      return id(fuse_f10_voltage).state > 1.0;
+    lambda: return id(fuse_f10_voltage).state > 1.0;
     device_class: power
 
   - platform: template
     name: "Fuse F11 OK"
     id: fuse_f11_ok
-    lambda: |-
-      return id(fuse_f11_voltage).state > 1.0;
+    lambda: return id(fuse_f11_voltage).state > 1.0;
     device_class: power
 
   - platform: template
     name: "Fuse F12 OK"
     id: fuse_f12_ok
-    lambda: |-
-      return id(fuse_f12_voltage).state > 1.0;
+    lambda: return id(fuse_f12_voltage).state > 1.0;
     device_class: power
 
   - platform: template
     name: "Fuse F13 OK"
     id: fuse_f13_ok
-    lambda: |-
-      return id(fuse_f13_voltage).state > 1.0;
+    lambda: return id(fuse_f13_voltage).state > 1.0;
     device_class: power
 
   - platform: template
     name: "Fuse F14 OK"
     id: fuse_f14_ok
-    lambda: |-
-      return id(fuse_f14_voltage).state > 1.0;
+    lambda: return id(fuse_f14_voltage).state > 1.0;
     device_class: power
 
   - platform: template
     name: "Fuse F15 OK"
     id: fuse_f15_ok
-    lambda: |-
-      return id(fuse_f15_voltage).state > 1.0;
+    lambda: return id(fuse_f15_voltage).state > 1.0;
     device_class: power
 
   - platform: template
     name: "Fuse F16 OK"
     id: fuse_f16_ok
-    lambda: |-
-      return id(fuse_f16_voltage).state > 1.0;
+    lambda: return id(fuse_f16_voltage).state > 1.0;
     device_class: power
+
+  # ---------------------------------------------------------------------------
+  # Input Detection
+  # ---------------------------------------------------------------------------
+
+  - platform: template
+    name: "D+ Active"
+    id: dplus_active
+    lambda: return id(dplus_voltage).state > 6.0;
+    device_class: power
+
+  - platform: template
+    name: "Shore Power Connected"
+    id: shore_power_connected
+    lambda: return id(ac_charger_voltage).state > 6.0;
+    device_class: plug
 
   # ---------------------------------------------------------------------------
   # Truma Binary Sensors
   # ---------------------------------------------------------------------------
 
-  # CP Plus connected
   - platform: truma_inetbox
     truma_inetbox_id: truma
     type: CP_PLUS_CONNECTED
     name: "Truma CP Plus Connected"
     id: truma_connected
 
-  # Room heater active
-  - platform: truma_inetbox
-    truma_inetbox_id: truma
-    type: HEATER_ROOM
-    name: "Truma Room Heater Active"
-    id: truma_heater_room
-
-  # Water heater active
-  - platform: truma_inetbox
-    truma_inetbox_id: truma
-    type: HEATER_WATER
-    name: "Truma Water Heater Active"
-    id: truma_heater_water
-
-  # Gas heater mode
-  - platform: truma_inetbox
-    truma_inetbox_id: truma
-    type: HEATER_GAS
-    name: "Truma Gas Mode"
-    id: truma_gas_mode
-
-  # Electric/Mix mode
-  - platform: truma_inetbox
-    truma_inetbox_id: truma
-    type: HEATER_ELECTRICITY
-    name: "Truma Electric Mode"
-    id: truma_electric_mode
-
-  # Heater has error
   - platform: truma_inetbox
     truma_inetbox_id: truma
     type: HEATER_HAS_ERROR
     name: "Truma Has Error"
     id: truma_has_error
-    device_class: problem
-
-  # Timer active
-  - platform: truma_inetbox
-    truma_inetbox_id: truma
-    type: TIMER_ACTIVE
-    name: "Truma Timer Active"
-    id: truma_timer_active
-
-  # ---------------------------------------------------------------------------
-  # GPIO Binary Inputs
-  # ---------------------------------------------------------------------------
-
-  # SW1 on PCB
-  - platform: gpio
-    pin:
-      number: GPIO34
-      mode: INPUT
-    name: "SW1"
-    id: sw_1
-    device_class: running
-    filters:
-      - delayed_on: 100ms
-      - delayed_off: 1s
-    on_press:
-      - switch.turn_on: relay_light_off_coil
 
 # =============================================================================
-# Miscellaneous Switches
+# Switches - MCP23017 Controlled Relays
 # =============================================================================
 
 switch:
+  # ---------------------------------------------------------------------------
+  # Internal MCP23017 Pin Outputs (coil drivers via ULN2803A)
+  # Bistable relays need a pulse to change state
+  # ---------------------------------------------------------------------------
 
-# ---------------------------------------------------------------------------
-# Internal Relay Coil Drivers (bistable relays need pulse to toggle)
-# ---------------------------------------------------------------------------
-
-  # Light group ON/OFF coils (internal)
-  - platform: gpio
-    id: relay_light_on_coil
-    pin: GPIO2
-    internal: true
-    on_turn_on:
-      - delay: 50ms
-      - switch.turn_off: relay_light_on_coil
-  - platform: gpio
-    id: relay_light_off_coil
-    pin: GPIO4
-    internal: true
-    on_turn_on:
-      - delay: 50ms
-      - switch.turn_off: relay_light_off_coil
-
-  # 12V group ON/OFF coils (internal)
+  # 12V Group relay coils (GPA0, GPA1)
   - platform: gpio
     id: relay_12v_on_coil
-    pin: GPIO5
+    pin:
+      mcp23xxx: io_expander
+      number: 0  # GPA0
+      mode: OUTPUT
     internal: true
     on_turn_on:
-      - delay: 50ms
+      - delay: 100ms
       - switch.turn_off: relay_12v_on_coil
+
   - platform: gpio
     id: relay_12v_off_coil
-    pin: GPIO18
+    pin:
+      mcp23xxx: io_expander
+      number: 1  # GPA1
+      mode: OUTPUT
     internal: true
     on_turn_on:
-      - delay: 50ms
+      - delay: 100ms
       - switch.turn_off: relay_12v_off_coil
 
-  # AUX group ON/OFF coils (internal)
+  # AUX Group relay coils (GPA2, GPA3)
   - platform: gpio
     id: relay_aux_on_coil
-    pin: GPIO23
+    pin:
+      mcp23xxx: io_expander
+      number: 2  # GPA2
+      mode: OUTPUT
     internal: true
     on_turn_on:
-      - delay: 50ms
+      - delay: 100ms
       - switch.turn_off: relay_aux_on_coil
+
   - platform: gpio
     id: relay_aux_off_coil
-    pin: GPIO25
+    pin:
+      mcp23xxx: io_expander
+      number: 3  # GPA3
+      mode: OUTPUT
     internal: true
     on_turn_on:
-      - delay: 50ms
+      - delay: 100ms
       - switch.turn_off: relay_aux_off_coil
 
-  # Pump relay ON/OFF coils (internal)
+  # Light Group relay coils (GPA4, GPA5)
+  - platform: gpio
+    id: relay_light_on_coil
+    pin:
+      mcp23xxx: io_expander
+      number: 4  # GPA4
+      mode: OUTPUT
+    internal: true
+    on_turn_on:
+      - delay: 100ms
+      - switch.turn_off: relay_light_on_coil
+
+  - platform: gpio
+    id: relay_light_off_coil
+    pin:
+      mcp23xxx: io_expander
+      number: 5  # GPA5
+      mode: OUTPUT
+    internal: true
+    on_turn_on:
+      - delay: 100ms
+      - switch.turn_off: relay_light_off_coil
+
+  # Pump relay coils (GPA6, GPA7)
   - platform: gpio
     id: relay_pump_on_coil
-    pin: GPIO26
+    pin:
+      mcp23xxx: io_expander
+      number: 6  # GPA6
+      mode: OUTPUT
     internal: true
     on_turn_on:
       - delay: 3000ms
       - switch.turn_off: relay_pump_on_coil
+
   - platform: gpio
     id: relay_pump_off_coil
-    pin: GPIO27
+    pin:
+      mcp23xxx: io_expander
+      number: 7  # GPA7
+      mode: OUTPUT
     internal: true
     on_turn_on:
       - delay: 3000ms
       - switch.turn_off: relay_pump_off_coil
 
-# ---------------------------------------------------------------------------
-# User-Facing Switches (exposed to Home Assistant)
-# ---------------------------------------------------------------------------
+  # ---------------------------------------------------------------------------
+  # Additional MCP23017 Outputs (GPB0-GPB5)
+  # ---------------------------------------------------------------------------
 
-  # Light Group - controls F4-F5 fuses (2x 30A)
-  - platform: template
-    name: "Light Group"
-    id: switch_light
-    icon: mdi:lightbulb-group
-    optimistic: true
-    turn_on_action:
-      - switch.turn_on: relay_light_on_coil
-    turn_off_action:
-      - switch.turn_on: relay_light_off_coil
+  # EisEx heater control (GPB0)
+  - platform: gpio
+    id: eisex_output
+    name: "EisEx Heater"
+    icon: mdi:heating-coil
+    pin:
+      mcp23xxx: io_expander
+      number: 8  # GPB0
+      mode: OUTPUT
 
-  # 12V Group - controls F14-F16 fuses (3x 30A)
-  - platform: template
-    name: "12V Group"
-    id: switch_12v
-    icon: mdi:power-socket-eu
-    optimistic: true
-    turn_on_action:
-      - switch.turn_on: relay_12v_on_coil
-    turn_off_action:
-      - switch.turn_on: relay_12v_off_coil
+  # D+ Relay control (GPB1)
+  - platform: gpio
+    id: dplus_relay
+    name: "D+ Relay"
+    icon: mdi:car-battery
+    pin:
+      mcp23xxx: io_expander
+      number: 9  # GPB1
+      mode: OUTPUT
 
-  # AUX Group - controls F11-F13 fuses (3x 30A)
-  - platform: template
-    name: "AUX Group"
-    id: switch_aux
-    icon: mdi:power
-    optimistic: true
-    turn_on_action:
-      - switch.turn_on: relay_aux_on_coil
-    turn_off_action:
-      - switch.turn_on: relay_aux_off_coil
+  # Fridge control (GPB2)
+  - platform: gpio
+    id: fridge_control
+    name: "Fridge Control"
+    icon: mdi:fridge
+    pin:
+      mcp23xxx: io_expander
+      number: 10  # GPB2
+      mode: OUTPUT
 
-  # Water Pump - controls F1 fuse (10A)
+  # ---------------------------------------------------------------------------
+  # User-Facing Template Switches (for Home Assistant)
+  # ---------------------------------------------------------------------------
+
+  # Water Pump
   - platform: template
     name: "Water Pump"
     id: switch_pump
@@ -901,9 +781,90 @@ switch:
     turn_off_action:
       - switch.turn_on: relay_pump_off_coil
 
-  # EisEx Heater (via BTS6143D smart switch)
+  # Light Group
+  - platform: template
+    name: "Light Group"
+    id: switch_light
+    icon: mdi:lightbulb-group
+    optimistic: true
+    turn_on_action:
+      - switch.turn_on: relay_light_on_coil
+    turn_off_action:
+      - switch.turn_on: relay_light_off_coil
+
+  # 12V Group
+  - platform: template
+    name: "12V Group"
+    id: switch_12v
+    icon: mdi:power-socket-eu
+    optimistic: true
+    turn_on_action:
+      - switch.turn_on: relay_12v_on_coil
+    turn_off_action:
+      - switch.turn_on: relay_12v_off_coil
+
+  # AUX Group
+  - platform: template
+    name: "AUX Group"
+    id: switch_aux
+    icon: mdi:power
+    optimistic: true
+    turn_on_action:
+      - switch.turn_on: relay_aux_on_coil
+    turn_off_action:
+      - switch.turn_on: relay_aux_off_coil
+
+  # ---------------------------------------------------------------------------
+  # CAN Termination Control
+  # ---------------------------------------------------------------------------
+
   - platform: gpio
-    name: "EisEx Heater"
-    id: switch_eisex
-    icon: mdi:heating-coil
-    pin: GPIO33
+    name: "CAN Termination"
+    id: can_termination
+    icon: mdi:resistor
+    pin: GPIO27
+
+# =============================================================================
+# Climate - Truma Heater
+# =============================================================================
+
+climate:
+  - platform: truma_inetbox
+    truma_inetbox_id: truma
+    type: ROOM
+    name: "Truma Heater"
+    id: truma_heater
+
+# =============================================================================
+# Number Controls - Truma Settings
+# =============================================================================
+
+number:
+  - platform: truma_inetbox
+    truma_inetbox_id: truma
+    type: TARGET_ROOM_TEMPERATURE
+    name: "Truma Target Room Temp"
+    id: truma_target_room_temp
+
+  - platform: truma_inetbox
+    truma_inetbox_id: truma
+    type: TARGET_WATER_TEMPERATURE
+    name: "Truma Target Water Temp"
+    id: truma_target_water_temp
+
+# =============================================================================
+# Select Controls - Truma Modes
+# =============================================================================
+
+select:
+  - platform: truma_inetbox
+    truma_inetbox_id: truma
+    type: HEATER_FAN_MODE_COMBI
+    name: "Truma Fan Mode"
+    id: truma_fan_mode
+
+  - platform: truma_inetbox
+    truma_inetbox_id: truma
+    type: HEATER_ENERGY_MIX_GAS
+    name: "Truma Energy Mix"
+    id: truma_energy_mix
