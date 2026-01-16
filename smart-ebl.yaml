@@ -9,10 +9,6 @@
 substitutions:
   name: smart-ebl
   friendly_name: Smart EBL
-  on_boot:
-    priority: -100
-    then:
-      - switch.turn_on: mcp23017_reset
 
 esphome:
   name: ${name}
@@ -21,9 +17,14 @@ esphome:
     board_build.flash_mode: dio
     board_build.f_flash: 80000000L
   on_boot:
-    priority: 600  # Run early, before other components initialize
+    priority: -100  # Run early, before other components initialize
     then:
       - output.turn_on: mcp23017_reset  # Release MCP23017 from reset
+      - output.turn_off: lin_ms # OFF=Slave, ON=Master
+      - output.turn_off: lin_wake # OFF=Normal, ON=Wakeup
+      - output.turn_off: lin_slp # OFF=Normal, ON=Sleep
+      - output.turn_on: can_term # Terminating resistor enabled after boot if ON
+      - output.turn_off: can_stb # Transceiver active after boot if OFF
 
 esp32:
   board: esp-wrover-kit
@@ -81,39 +82,36 @@ mcp23017:
   - id: io_expander
     address: 0x20
 
-
 output:
-    # MCP23017 Reset Pin - must be HIGH for normal operation
-  - platform: gpio
-    pin: GPIO33
-    id: mcp23017_reset
-    # Will be set HIGH at boot via on_boot
 
-    # LIN Bus Control Pins (via TJA1021T U14)
+  - platform: gpio
+    id: mcp23017_reset
+    pin: GPIO33
+    # MCP23017 Reset Pin - must be HIGH for normal operation
   - platform: gpio
     id: lin_ms
     pin: GPIO25
-    restore_mode: RESTORE_DEFAULT_OFF # OFF=Slave, ON=Master
+    # OFF=Slave, ON=Master
   - platform: gpio
     id: lin_wake
     pin: GPIO26
-    restore_mode: RESTORE_DEFAULT_OFF # OFF=Normal, ON=Wakeup
+    # OFF=Normal, ON=Wakeup
   - platform: gpio
     id: lin_slp
     pin: GPIO27
-    restore_mode: RESTORE_DEFAULT_OFF # OFF=Normal, ON=Sleep
+    # OFF=Normal, ON=Sleep
 
     # CAN Bus Control Pins (via SN65HVD234 U3)
   - platform: gpio
     id: can_term
     pin: GPIO23
     inverted: false
-    restore_mode: RESTORE_DEFAULT_ON  # Terminating resistor enabled after boot if ON
+    # Terminating resistor enabled after boot if ON
   - platform: gpio
     id: can_stb
     pin: GPIO32
     inverted: false
-    restore_mode: RESTORE_DEFAULT_OFF  # Transceiver active after boot if OFF
+    # Transceiver active after boot if OFF
 
 # =============================================================================
 # ADS7830 8-bit ADC Hubs
@@ -739,12 +737,6 @@ switch:
   #     GPA3(3)=T1_DC, GPA4(4)=T2_DC, GPA5(5)=T3_DC
   # ---------------------------------------------------------------------------
 
-  - platform: gpio
-    id: mcp23017_reset
-    internal: true
-    pin: GPIO33
-    restore_mode: ALWAYS_ON
-
   # ---------------------------------------------------------------------------
   # Relay Coils MCP23017 Outputs (GPB0-GPB5)
   # ---------------------------------------------------------------------------
@@ -951,16 +943,6 @@ switch:
       - switch.turn_on: relay_aux_on_coil
     turn_off_action:
       - switch.turn_on: relay_aux_off_coil
-
-  # ---------------------------------------------------------------------------
-  # CAN Termination Control
-  # ---------------------------------------------------------------------------
-
-  - platform: gpio
-    name: "CAN Termination"
-    id: can_termination
-    icon: mdi:resistor
-    pin: GPIO23
 
 # =============================================================================
 # Climate - Truma Heater
