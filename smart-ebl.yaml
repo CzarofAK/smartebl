@@ -60,8 +60,14 @@ i2c:
 # MCP23017 IO Expander (U17) - Relay Control
 # =============================================================================
 # I2C Address: 0x20 (A0=A1=A2=GND)
-# GPA0-GPA7: Relay coil control (active high via ULN2803A)
-# GPB0-GPB5: Additional outputs (EisEx, D+, Fridge, Tank DC control)
+# GPIO33 = IO_RESET (reset pin), GPIO36 = INT_A, GPIO39 = INT_B
+#
+# PORT B (GPB0-GPB7) - Relay coil control via ULN2803A:
+#   GPB0=P_off, GPB1=P_on, GPB2=L_off, GPB3=L_on,
+#   GPB4=A_off, GPB5=A_on, GPB6=12_off, GPB7=12_on
+#
+# PORT A (GPA0-GPA5) - Additional outputs:
+#   GPA0=EisX, GPA1=D+2, GPA2=F-CTRL, GPA3=T1_DC, GPA4=T2_DC, GPA5=T3_DC
 
 mcp23017:
   - id: io_expander
@@ -84,12 +90,13 @@ ads7830:
 # =============================================================================
 # CAN Bus (RV-C Protocol)
 # =============================================================================
+# GPIO14 = RXD_CAN1, GPIO15 = TXD_CAN1, GPIO23 = CAN_TERM, GPIO32 = CAN_1_STB
 
 canbus:
   - platform: esp32_can
     id: can_bus
-    tx_pin: GPIO5
-    rx_pin: GPIO4
+    tx_pin: GPIO15
+    rx_pin: GPIO14
     can_id: 0
     bit_rate: 250kbps
 
@@ -99,13 +106,21 @@ canbus:
 
 uart:
   # LIN Bus for Truma CP Plus (via TJA1021T U14)
+  # GPIO12 = TXD1, GPIO13 = RXD1
   - id: lin_uart
-    tx_pin: GPIO17
-    rx_pin: GPIO16
+    tx_pin: GPIO12
+    rx_pin: GPIO13
     baud_rate: 9600
     data_bits: 8
     parity: NONE
     stop_bits: 2
+
+  # Nextion Display (via TRS3221 RS-232 transceiver U18)
+  # GPIO18 = TXD2, GPIO19 = RXD2
+  - id: display_uart
+    tx_pin: GPIO18
+    rx_pin: GPIO19
+    baud_rate: 115200
 
 # =============================================================================
 # Truma iNetbox Integration
@@ -638,19 +653,21 @@ switch:
   # ---------------------------------------------------------------------------
   # Internal MCP23017 Pin Outputs (coil drivers via ULN2803A)
   # Bistable relays need a pulse to change state
-  # PIN MAPPING FROM SCHEMATIC (E-Block.kicad_sch):
-  #   GPA0 = P_off (Pump OFF)    GPA4 = A_off (AUX OFF)
-  #   GPA1 = P_on  (Pump ON)     GPA5 = A_on  (AUX ON)
-  #   GPA2 = L_off (Light OFF)   GPA6 = 12_off (12V OFF)
-  #   GPA3 = L_on  (Light ON)    GPA7 = 12_on  (12V ON)
+  # PIN MAPPING FROM information/I2C overview:
+  #   PORT B (pins 8-15): Relay coils
+  #     GPB0(8)=P_off, GPB1(9)=P_on, GPB2(10)=L_off, GPB3(11)=L_on
+  #     GPB4(12)=A_off, GPB5(13)=A_on, GPB6(14)=12_off, GPB7(15)=12_on
+  #   PORT A (pins 0-7): Additional outputs
+  #     GPA0(0)=EisX, GPA1(1)=D+2, GPA2(2)=F-CTRL
+  #     GPA3(3)=T1_DC, GPA4(4)=T2_DC, GPA5(5)=T3_DC
   # ---------------------------------------------------------------------------
 
-  # Pump relay coils (GPA0=OFF, GPA1=ON)
+  # Pump relay coils (GPB0=OFF, GPB1=ON)
   - platform: gpio
     id: relay_pump_off_coil
     pin:
       mcp23xxx: io_expander
-      number: 0  # GPA0 = P_off
+      number: 8  # GPB0 = P_off
       mode: OUTPUT
     internal: true
     on_turn_on:
@@ -661,19 +678,19 @@ switch:
     id: relay_pump_on_coil
     pin:
       mcp23xxx: io_expander
-      number: 1  # GPA1 = P_on
+      number: 9  # GPB1 = P_on
       mode: OUTPUT
     internal: true
     on_turn_on:
       - delay: 100ms
       - switch.turn_off: relay_pump_on_coil
 
-  # Light Group relay coils (GPA2=OFF, GPA3=ON)
+  # Light Group relay coils (GPB2=OFF, GPB3=ON)
   - platform: gpio
     id: relay_light_off_coil
     pin:
       mcp23xxx: io_expander
-      number: 2  # GPA2 = L_off
+      number: 10  # GPB2 = L_off
       mode: OUTPUT
     internal: true
     on_turn_on:
@@ -684,19 +701,19 @@ switch:
     id: relay_light_on_coil
     pin:
       mcp23xxx: io_expander
-      number: 3  # GPA3 = L_on
+      number: 11  # GPB3 = L_on
       mode: OUTPUT
     internal: true
     on_turn_on:
       - delay: 100ms
       - switch.turn_off: relay_light_on_coil
 
-  # AUX Group relay coils (GPA4=OFF, GPA5=ON)
+  # AUX Group relay coils (GPB4=OFF, GPB5=ON)
   - platform: gpio
     id: relay_aux_off_coil
     pin:
       mcp23xxx: io_expander
-      number: 4  # GPA4 = A_off
+      number: 12  # GPB4 = A_off
       mode: OUTPUT
     internal: true
     on_turn_on:
@@ -707,19 +724,19 @@ switch:
     id: relay_aux_on_coil
     pin:
       mcp23xxx: io_expander
-      number: 5  # GPA5 = A_on
+      number: 13  # GPB5 = A_on
       mode: OUTPUT
     internal: true
     on_turn_on:
       - delay: 100ms
       - switch.turn_off: relay_aux_on_coil
 
-  # 12V Group relay coils (GPA6=OFF, GPA7=ON)
+  # 12V Group relay coils (GPB6=OFF, GPB7=ON)
   - platform: gpio
     id: relay_12v_off_coil
     pin:
       mcp23xxx: io_expander
-      number: 6  # GPA6 = 12_off
+      number: 14  # GPB6 = 12_off
       mode: OUTPUT
     internal: true
     on_turn_on:
@@ -730,7 +747,7 @@ switch:
     id: relay_12v_on_coil
     pin:
       mcp23xxx: io_expander
-      number: 7  # GPA7 = 12_on
+      number: 15  # GPB7 = 12_on
       mode: OUTPUT
     internal: true
     on_turn_on:
@@ -738,37 +755,66 @@ switch:
       - switch.turn_off: relay_12v_on_coil
 
   # ---------------------------------------------------------------------------
-  # Additional MCP23017 Outputs (GPB0-GPB5)
+  # Additional MCP23017 Outputs (GPA0-GPA5)
   # ---------------------------------------------------------------------------
 
-  # EisEx heater control (GPB0)
+  # EisEx heater control (GPA0)
   - platform: gpio
     id: eisex_output
     name: "EisEx Heater"
     icon: mdi:heating-coil
     pin:
       mcp23xxx: io_expander
-      number: 8  # GPB0
+      number: 0  # GPA0 = EisX
       mode: OUTPUT
 
-  # D+ Relay control (GPB1)
+  # D+ Relay control (GPA1)
   - platform: gpio
     id: dplus_relay
     name: "D+ Relay"
     icon: mdi:car-battery
     pin:
       mcp23xxx: io_expander
-      number: 9  # GPB1
+      number: 1  # GPA1 = D+2
       mode: OUTPUT
 
-  # Fridge control (GPB2)
+  # Fridge control (GPA2)
   - platform: gpio
     id: fridge_control
     name: "Fridge Control"
     icon: mdi:fridge
     pin:
       mcp23xxx: io_expander
-      number: 10  # GPB2
+      number: 2  # GPA2 = F-CTRL
+      mode: OUTPUT
+
+  # Tank DC mode controls (GPA3-GPA5)
+  # These inhibit tank readings while driving/moving
+  - platform: gpio
+    id: tank1_dc_mode
+    name: "Tank 1 DC Mode"
+    icon: mdi:water
+    pin:
+      mcp23xxx: io_expander
+      number: 3  # GPA3 = T1_DC
+      mode: OUTPUT
+
+  - platform: gpio
+    id: tank2_dc_mode
+    name: "Tank 2 DC Mode"
+    icon: mdi:water
+    pin:
+      mcp23xxx: io_expander
+      number: 4  # GPA4 = T2_DC
+      mode: OUTPUT
+
+  - platform: gpio
+    id: tank3_dc_mode
+    name: "Tank 3 DC Mode"
+    icon: mdi:water
+    pin:
+      mcp23xxx: io_expander
+      number: 5  # GPA5 = T3_DC
       mode: OUTPUT
 
   # ---------------------------------------------------------------------------

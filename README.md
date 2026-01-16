@@ -197,36 +197,44 @@ ESP32 GPIO21/22 (I2C) --> MCP23017 (0x20) --> ULN2803A --> Relay Coils
 
 ### MCP23017 Pin Mapping
 
-| Pin | Signal | Function |
-|-----|--------|----------|
-| GPA0 | P_off | K4 bistable relay OFF coil (Water pump) |
-| GPA1 | P_on | K4 bistable relay ON coil (Water pump) |
-| GPA2 | L_off | K8 bistable relay OFF coil (Light group) |
-| GPA3 | L_on | K8 bistable relay ON coil (Light group) |
-| GPA4 | A_off | K7 bistable relay OFF coil (AUX group) |
-| GPA5 | A_on | K7 bistable relay ON coil (AUX group) |
-| GPA6 | 12_off | K3 bistable relay OFF coil (12V group) |
-| GPA7 | 12_on | K3 bistable relay ON coil (12V group) |
-| GPB0 | EisX | EisEx heater output (via BTS6143D) |
-| GPB1 | D+2 | D+ programmable output |
-| GPB2 | F-CTRL | Fridge control relay |
-| GPB3-5 | T1/T2/T3_DC | Tank sensor DC mode control |
+**Port B (pins 8-15) - Relay Coils via ULN2803A:**
+| Pin | ESPHome# | Signal | Function |
+|-----|----------|--------|----------|
+| GPB0 | 8 | P_off | K4 Pump OFF coil |
+| GPB1 | 9 | P_on | K4 Pump ON coil |
+| GPB2 | 10 | L_off | K8 Light OFF coil |
+| GPB3 | 11 | L_on | K8 Light ON coil |
+| GPB4 | 12 | A_off | K7 AUX OFF coil |
+| GPB5 | 13 | A_on | K7 AUX ON coil |
+| GPB6 | 14 | 12_off | K3 12V OFF coil |
+| GPB7 | 15 | 12_on | K3 12V ON coil |
+
+**Port A (pins 0-5) - Additional Outputs:**
+| Pin | ESPHome# | Signal | Function |
+|-----|----------|--------|----------|
+| GPA0 | 0 | EisX | EisEx heater |
+| GPA1 | 1 | D+2 | D+ relay |
+| GPA2 | 2 | F-CTRL | Fridge relay |
+| GPA3-5 | 3-5 | T1/T2/T3_DC | Tank DC mode |
 
 ### ESP32 GPIO Mapping
 
-| GPIO | Function | Notes |
-|------|----------|-------|
-| GPIO0 | Mode Button | Pull-up, active low (boot) |
-| GPIO4 | CAN RX | SN65HVD234 |
-| GPIO5 | CAN TX | SN65HVD234 |
-| GPIO16 | LIN/Nextion RX | UART1 (TJA1021T) |
-| GPIO17 | LIN/Nextion TX | UART1 (TJA1021T) |
-| GPIO21 | I2C SDA | MCP23017 + ADS7830 ADCs |
-| GPIO22 | I2C SCL | MCP23017 + ADS7830 ADCs |
-| GPIO34 | D+ Signal | Input only |
-| GPIO35 | Shore Power | Input only |
-| GPIO36 | Input (VP) | Input only |
-| GPIO39 | Input (VN) | Input only |
+| GPIO | Label | Function | Notes |
+|------|-------|----------|-------|
+| GPIO12 | TXD1 | LIN TX | Truma (TJA1021T) |
+| GPIO13 | RXD1 | LIN RX | Truma (TJA1021T) |
+| GPIO14 | RXD_CAN1 | CAN RX | SN65HVD234 |
+| GPIO15 | TXD_CAN1 | CAN TX | SN65HVD234 |
+| GPIO18 | TXD2 | Display TX | TRS3221 RS-232 |
+| GPIO19 | RXD2 | Display RX | TRS3221 RS-232 |
+| GPIO21 | SDA | I2C Data | MCP23017 + ADCs |
+| GPIO22 | SCL | I2C Clock | MCP23017 + ADCs |
+| GPIO23 | CAN_TERM | CAN Term | Software switchable |
+| GPIO25-27 | LIN_* | LIN Control | MS/WAKE/SLP |
+| GPIO32 | CAN_1_STB | CAN Standby | |
+| GPIO33 | IO_RESET | MCP23017 Reset | |
+| GPIO36 | INT_A | MCP23017 INT A | |
+| GPIO39 | INT_B | MCP23017 INT B | |
 
 ### I2C Bus Devices
 

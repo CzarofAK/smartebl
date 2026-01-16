@@ -230,60 +230,63 @@ esphome upload smart-ebl.yaml --device smart-ebl.local
 
 ## Development Notes
 
-### ESP32 GPIO Mapping (from schematic analysis)
+### ESP32 GPIO Mapping (from information/ESP32 Pinout)
 
-| GPIO | Function | Notes |
-|------|----------|-------|
-| GPIO0 | BOOT / Mode Button | Pull-up, active low (IO0) |
-| GPIO1 | TXD0 | USB programming (CP2102N) |
-| GPIO3 | RXD0 | USB programming (CP2102N) |
-| GPIO4 | CAN RX | esp32_can (SN65HVD234) |
-| GPIO5 | CAN TX | esp32_can (SN65HVD234) |
-| GPIO16 | TXD2 / RXD1 | Nextion display RX (via TRS3221) |
-| GPIO17 | RXD2 / TXD1 | Nextion display TX (via TRS3221) |
-| GPIO21 | I2C SDA | ADCs + MCP23017 |
-| GPIO22 | I2C SCL | ADCs + MCP23017 |
-| GPIO25 | LIN_MS | LIN Master/Slave select |
-| GPIO26 | LIN_WAKE | LIN Wake signal |
-| GPIO27 | LIN_SLP | LIN Sleep signal |
-| GPIO32 | LIN TX | LIN bus (TJA1021T via UART) |
-| GPIO33 | LIN RX | LIN bus (TJA1021T via UART) |
-| GPIO34 | D+ Signal | Input only |
-| GPIO35 | Shore Power (GPIO35) | Input only |
-| GPIO36 | Input (VP) | Input only |
-| GPIO39 | Input (VN) | Input only |
+| GPIO | Label | Function | Notes |
+|------|-------|----------|-------|
+| GPIO0 | IO0 | BOOT | Flash mode auto set when USB plugged in |
+| GPIO1 | TXD0 | USB Programmer | CP2102N |
+| GPIO3 | RXD0 | USB Programmer | CP2102N |
+| GPIO12 | TXD1 | LIN TX | Truma iNetbox (TJA1021T) |
+| GPIO13 | RXD1 | LIN RX | Truma iNetbox (TJA1021T) |
+| GPIO14 | RXD_CAN1 | CAN RX | SN65HVD234 |
+| GPIO15 | TXD_CAN1 | CAN TX | SN65HVD234 |
+| GPIO18 | TXD2 | Display TX | Via TRS3221 RS-232 |
+| GPIO19 | RXD2 | Display RX | Via TRS3221 RS-232 |
+| GPIO21 | SDA | I2C Data | ADS7830 ADCs + MCP23017 |
+| GPIO22 | SCL | I2C Clock | ADS7830 ADCs + MCP23017 |
+| GPIO23 | CAN_TERM | CAN Termination | Software switchable |
+| GPIO25 | LIN_MS | LIN Master/Slave | TJA1021T control |
+| GPIO26 | LIN_WAKE | LIN Wake | TJA1021T control |
+| GPIO27 | LIN_SLP | LIN Sleep | TJA1021T control |
+| GPIO32 | CAN_1_STB | CAN Standby | SN65HVD234 control |
+| GPIO33 | IO_RESET | MCP23017 Reset | Pin 14 on MCP23017 |
+| GPIO34 | - | SW1 Mode Button | Function TBD |
+| GPIO35 | GPIO35 | Not Connected | - |
+| GPIO36 | INT_A | MCP23017 INT A | Pin 16 on MCP23017 |
+| GPIO39 | INT_B | MCP23017 INT B | Pin 15 on MCP23017 |
 
 ### Display Connection (TRS3221 RS-232 Transceiver)
 The Nextion display connects via RS-232 levels through the TRS3221 (U18):
-- **TXD_PANEL**: ESP32 TXD2 -> TRS3221 -> Nextion RX
-- **RXD_PANEL**: Nextion TX -> TRS3221 -> ESP32 RXD2
+- **TXD_PANEL**: ESP32 GPIO18 (TXD2) -> TRS3221 -> Nextion RX
+- **RXD_PANEL**: Nextion TX -> TRS3221 -> ESP32 GPIO19 (RXD2)
 - **Connector**: RJ45 (includes RS232, LIN, and 12V power)
 
 ### MCP23017 IO Expander (U17) - Address 0x20
 
 All relay control is via MCP23017 -> ULN2803A (U8) -> Relay coils.
 
-**Port A (GPA0-GPA7) - Relay Control:**
-| Pin | Signal | Function |
-|-----|--------|----------|
-| GPA0 | P_off | K4 bistable relay OFF coil (Water pump) |
-| GPA1 | P_on | K4 bistable relay ON coil (Water pump) |
-| GPA2 | L_off | K8 bistable relay OFF coil (Light group) |
-| GPA3 | L_on | K8 bistable relay ON coil (Light group) |
-| GPA4 | A_off | K7 bistable relay OFF coil (AUX group) |
-| GPA5 | A_on | K7 bistable relay ON coil (AUX group) |
-| GPA6 | 12_off | K3 bistable relay OFF coil (12V group) |
-| GPA7 | 12_on | K3 bistable relay ON coil (12V group) |
+**Port B (GPB0-GPB7) - Relay Coil Control via ULN2803A:**
+| Pin | ESPHome# | Signal | Function |
+|-----|----------|--------|----------|
+| GPB0 | 8 | P_off | K4 bistable relay OFF coil (Water pump) |
+| GPB1 | 9 | P_on | K4 bistable relay ON coil (Water pump) |
+| GPB2 | 10 | L_off | K8 bistable relay OFF coil (Light group) |
+| GPB3 | 11 | L_on | K8 bistable relay ON coil (Light group) |
+| GPB4 | 12 | A_off | K7 bistable relay OFF coil (AUX group) |
+| GPB5 | 13 | A_on | K7 bistable relay ON coil (AUX group) |
+| GPB6 | 14 | 12_off | K3 bistable relay OFF coil (12V group) |
+| GPB7 | 15 | 12_on | K3 bistable relay ON coil (12V group) |
 
-**Port B (GPB0-GPB7) - Additional Outputs:**
-| Pin | Signal | Function |
-|-----|--------|----------|
-| GPB0 | EisX | EisEx heater (via BTS6143D) |
-| GPB1 | D+2 | D+ programmable output relay |
-| GPB2 | F-CTRL | Fridge control relay (K5/K6) |
-| GPB3 | T1_DC | Tank 1 DC mode control |
-| GPB4 | T2_DC | Tank 2 DC mode control |
-| GPB5 | T3_DC | Tank 3 DC mode control |
+**Port A (GPA0-GPA5) - Additional Outputs:**
+| Pin | ESPHome# | Signal | Function |
+|-----|----------|--------|----------|
+| GPA0 | 0 | EisX | EisEx heater (via BTS6143D) |
+| GPA1 | 1 | D+2 | D+ programmable output relay |
+| GPA2 | 2 | F-CTRL | Fridge control relay K6 |
+| GPA3 | 3 | T1_DC | Tank 1 DC mode (inhibit while moving) |
+| GPA4 | 4 | T2_DC | Tank 2 DC mode (inhibit while moving) |
+| GPA5 | 5 | T3_DC | Tank 3 DC mode (inhibit while moving) |
 
 ### I2C Bus Devices
 
@@ -296,14 +299,14 @@ All relay control is via MCP23017 -> ULN2803A (U8) -> Relay coils.
 | 0x4B | ADS7830 (U7) | Output monitoring |
 
 ### Bistable Relay Control
-Bistable (latching) relays require a pulse to toggle state. Controlled via MCP23017:
+Bistable (latching) relays require a pulse to toggle state. Controlled via MCP23017 Port B:
 ```yaml
 # Example: Water pump relay via MCP23017
 - platform: gpio
   id: relay_pump_on_coil
   pin:
     mcp23xxx: io_expander
-    number: 1  # GPA1 = P_on
+    number: 9  # GPB1 = P_on
     mode: OUTPUT
   internal: true
   on_turn_on:
@@ -314,7 +317,7 @@ Bistable (latching) relays require a pulse to toggle state. Controlled via MCP23
   id: relay_pump_off_coil
   pin:
     mcp23xxx: io_expander
-    number: 0  # GPA0 = P_off
+    number: 8  # GPB0 = P_off
     mode: OUTPUT
   internal: true
   on_turn_on:
