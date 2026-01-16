@@ -16,6 +16,10 @@ esphome:
   platformio_options:
     board_build.flash_mode: dio
     board_build.f_flash: 80000000L
+  on_boot:
+    priority: 600  # Run early, before other components initialize
+    then:
+      - output.turn_on: mcp23017_reset  # Release MCP23017 from reset
 
 esp32:
   board: esp-wrover-kit
@@ -72,6 +76,13 @@ i2c:
 mcp23017:
   - id: io_expander
     address: 0x20
+
+# MCP23017 Reset Pin - must be HIGH for normal operation
+output:
+  - platform: gpio
+    pin: GPIO33
+    id: mcp23017_reset
+    # Will be set HIGH at boot via on_boot
 
 # =============================================================================
 # ADS7830 8-bit ADC Hubs
