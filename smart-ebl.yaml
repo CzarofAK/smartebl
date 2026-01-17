@@ -19,7 +19,6 @@ esphome:
   on_boot:
     priority: -100  # Run early, before other components initialize
     then:
-      - output.turn_on: mcp23017_reset  # Release MCP23017 from reset
       - output.turn_off: lin_ms # OFF=Slave, ON=Master
       - output.turn_off: lin_wake # OFF=Normal, ON=Wakeup
       - output.turn_off: lin_slp # OFF=Normal, ON=Sleep
@@ -85,10 +84,6 @@ mcp23017:
 output:
 
   - platform: gpio
-    id: mcp23017_reset
-    pin: GPIO33
-    # MCP23017 Reset Pin - must be HIGH for normal operation
-  - platform: gpio
     id: lin_ms
     pin: GPIO25
     # OFF=Slave, ON=Master
@@ -105,12 +100,10 @@ output:
   - platform: gpio
     id: can_term
     pin: GPIO23
-    inverted: false
     # Terminating resistor enabled after boot if ON
   - platform: gpio
     id: can_stb
     pin: GPIO32
-    inverted: false
     # Transceiver active after boot if OFF
 
 # =============================================================================
