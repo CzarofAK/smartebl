@@ -111,6 +111,9 @@
 
 ### Quick Start
 
+To install it on your SmartEBL, you simply have to create a new device in you HomeAssistant ESPhome GUI and past the [smart-ebl.yaml](https://github.com/CzarofAK/smartebl/blob/main/smart-ebl.yaml) content.
+Make sure you got the ["basic.yaml"](https://github.com/CzarofAK/smartebl/blob/main/basic.yaml.example) and ["secrets.yaml"](https://github.com/CzarofAK/smartebl/blob/main/secrets.yaml.example) in right spot and updated with your personal credentials. Examples can be found below or in the code above.
+
 ```bash
 # Clone the repository
 git clone https://github.com/CzarofAK/smartebl.git
@@ -215,7 +218,9 @@ ESP32 GPIO21/22 (I2C) --> MCP23017 (0x20) --> ULN2803A --> Relay Coils
 | GPA0 | 0 | EisX | EisEx heater |
 | GPA1 | 1 | D+2 | D+ relay |
 | GPA2 | 2 | F-CTRL | Fridge relay |
-| GPA3-5 | 3-5 | T1/T2/T3_DC | Tank DC mode |
+| GPA3 | 3 | T1_DC | Tank DC mode |
+| GPA4 | 4 | T2_DC | Tank DC mode |
+| GPA5 | 5 | T3_DC | Tank DC mode |
 
 ### ESP32 GPIO Mapping
 
@@ -394,7 +399,6 @@ automation:
 - [ ] Tank calibration wizard
 - [ ] CI-BUS (CIVD) support
 - [ ] Bluetooth proxy for BLE sensors
-- [ ] Energy consumption tracking
 
 ---
 
