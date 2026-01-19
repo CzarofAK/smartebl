@@ -1,0 +1,573 @@
+# =============================================================================
+# Smart EBL - Home Assistant Lovelace Dashboard
+# =============================================================================
+# Central electrical control unit dashboard for motorhomes/campervans
+# Import this as a new dashboard or paste into raw config editor
+#
+# Entity naming: All entities follow pattern <domain>.smart_ebl_<name>
+# =============================================================================
+
+title: Smart EBL
+views:
+  # ===========================================================================
+  # View 1: Overview (Main Dashboard)
+  # ===========================================================================
+  - title: Overview
+    path: overview
+    icon: mdi:rv-truck
+    cards:
+      # -------------------------------------------------------------------------
+      # Power Status - Top Row
+      # -------------------------------------------------------------------------
+      - type: horizontal-stack
+        cards:
+          - type: gauge
+            entity: sensor.smart_ebl_leisure_battery_voltage
+            name: Leisure Battery
+            unit: V
+            min: 10
+            max: 15
+            needle: true
+            segments:
+              - from: 10
+                color: '#db4437'
+              - from: 11.5
+                color: '#ffa600'
+              - from: 12.4
+                color: '#43a047'
+              - from: 14.4
+                color: '#ffa600'
+
+          - type: gauge
+            entity: sensor.smart_ebl_starter_battery_voltage
+            name: Starter Battery
+            unit: V
+            min: 10
+            max: 15
+            needle: true
+            segments:
+              - from: 10
+                color: '#db4437'
+              - from: 11.5
+                color: '#ffa600'
+              - from: 12.4
+                color: '#43a047'
+              - from: 14.4
+                color: '#ffa600'
+
+          - type: entity
+            entity: binary_sensor.smart_ebl_shore_power_connected
+            name: Shore Power
+            icon: mdi:power-plug
+
+      # -------------------------------------------------------------------------
+      # Switching Groups - Main Controls
+      # -------------------------------------------------------------------------
+      - type: entities
+        title: Switching Groups
+        show_header_toggle: false
+        entities:
+          - entity: switch.smart_ebl_light_group
+            name: Light Group
+            icon: mdi:lightbulb-group
+          - entity: switch.smart_ebl_12v_group
+            name: 12V Group
+            icon: mdi:power-socket-eu
+          - entity: switch.smart_ebl_aux_group
+            name: AUX Group
+            icon: mdi:power
+          - entity: switch.smart_ebl_water_pump
+            name: Water Pump
+            icon: mdi:water-pump
+
+      # -------------------------------------------------------------------------
+      # Tank Levels
+      # -------------------------------------------------------------------------
+      - type: horizontal-stack
+        cards:
+          - type: gauge
+            entity: sensor.smart_ebl_tank_1_level
+            name: Fresh Water
+            unit: '%'
+            min: 0
+            max: 100
+            severity:
+              green: 50
+              yellow: 25
+              red: 10
+
+          - type: gauge
+            entity: sensor.smart_ebl_tank_2_level
+            name: Grey Water
+            unit: '%'
+            min: 0
+            max: 100
+            severity:
+              green: 0
+              yellow: 60
+              red: 80
+
+          - type: gauge
+            entity: sensor.smart_ebl_tank_3_level
+            name: Tank 3
+            unit: '%'
+            min: 0
+            max: 100
+            severity:
+              green: 50
+              yellow: 25
+              red: 10
+
+      # -------------------------------------------------------------------------
+      # Gas & Heating Quick Status
+      # -------------------------------------------------------------------------
+      - type: entities
+        title: Gas & Heating
+        show_header_toggle: false
+        entities:
+          - type: custom:template-entity-row
+            entity: sensor.smart_ebl_duocontrol_status
+            name: DuoControl
+            icon: mdi:gas-cylinder
+            state: >
+              {% if states('sensor.smart_ebl_duocontrol_status') | float > 6 %}
+                OK
+              {% else %}
+                Check Gas!
+              {% endif %}
+          - entity: switch.smart_ebl_eisex_heater
+            name: EisEx Heater
+            icon: mdi:heating-coil
+
+      # -------------------------------------------------------------------------
+      # Truma Quick Controls
+      # -------------------------------------------------------------------------
+      - type: thermostat
+        entity: climate.smart_ebl_truma_heater
+        name: Truma Heater
+
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: sensor.smart_ebl_truma_room_temperature
+            name: Room
+            icon: mdi:thermometer
+          - type: entity
+            entity: sensor.smart_ebl_truma_water_temperature
+            name: Water
+            icon: mdi:thermometer-water
+
+  # ===========================================================================
+  # View 2: Electrical
+  # ===========================================================================
+  - title: Electrical
+    path: electrical
+    icon: mdi:flash
+    cards:
+      # -------------------------------------------------------------------------
+      # Battery Monitoring - Large Gauges
+      # -------------------------------------------------------------------------
+      - type: vertical-stack
+        cards:
+          - type: markdown
+            content: '## Battery Status'
+
+          - type: horizontal-stack
+            cards:
+              - type: gauge
+                entity: sensor.smart_ebl_leisure_battery_voltage
+                name: Leisure Battery
+                unit: V
+                min: 10
+                max: 15
+                needle: true
+                segments:
+                  - from: 10
+                    color: '#db4437'
+                  - from: 11
+                    color: '#ff6d00'
+                  - from: 11.5
+                    color: '#ffa600'
+                  - from: 12.2
+                    color: '#8bc34a'
+                  - from: 12.6
+                    color: '#43a047'
+                  - from: 14.4
+                    color: '#ffa600'
+                  - from: 14.8
+                    color: '#db4437'
+
+              - type: gauge
+                entity: sensor.smart_ebl_starter_battery_voltage
+                name: Starter Battery
+                unit: V
+                min: 10
+                max: 15
+                needle: true
+                segments:
+                  - from: 10
+                    color: '#db4437'
+                  - from: 11
+                    color: '#ff6d00'
+                  - from: 11.5
+                    color: '#ffa600'
+                  - from: 12.2
+                    color: '#8bc34a'
+                  - from: 12.6
+                    color: '#43a047'
+                  - from: 14.4
+                    color: '#ffa600'
+                  - from: 14.8
+                    color: '#db4437'
+
+      # -------------------------------------------------------------------------
+      # Output Voltages
+      # -------------------------------------------------------------------------
+      - type: entities
+        title: Output Monitoring
+        show_header_toggle: false
+        entities:
+          - entity: sensor.smart_ebl_light_output_voltage
+            name: Light Output
+            icon: mdi:lightbulb
+          - entity: sensor.smart_ebl_light_l_output_voltage
+            name: Light L Output
+            icon: mdi:lightbulb-outline
+          - entity: sensor.smart_ebl_12v_user_output_voltage
+            name: 12V User Output
+            icon: mdi:power-socket-eu
+          - entity: sensor.smart_ebl_12v_aux_output_voltage
+            name: AUX Output
+            icon: mdi:power
+          - entity: sensor.smart_ebl_pump_output_voltage
+            name: Pump Output
+            icon: mdi:water-pump
+          - entity: sensor.smart_ebl_contour_light_output_voltage
+            name: Contour Light
+            icon: mdi:car-parking-lights
+
+      # -------------------------------------------------------------------------
+      # Input Status
+      # -------------------------------------------------------------------------
+      - type: entities
+        title: Input Status
+        show_header_toggle: false
+        entities:
+          - entity: binary_sensor.smart_ebl_d_active
+            name: D+ Signal (Engine Running)
+            icon: mdi:engine
+          - entity: binary_sensor.smart_ebl_shore_power_connected
+            name: Shore Power
+            icon: mdi:power-plug
+          - entity: sensor.smart_ebl_d_signal_status
+            name: D+ Voltage
+            icon: mdi:car-battery
+          - entity: sensor.smart_ebl_ac_charger_detection
+            name: AC Charger Voltage
+            icon: mdi:ev-station
+
+  # ===========================================================================
+  # View 3: Fuses
+  # ===========================================================================
+  - title: Fuses
+    path: fuses
+    icon: mdi:fuse
+    cards:
+      # -------------------------------------------------------------------------
+      # Fuse Status Grid
+      # -------------------------------------------------------------------------
+      - type: markdown
+        content: '## Fuse Status Overview'
+
+      - type: grid
+        columns: 4
+        square: false
+        cards:
+          - type: entity
+            entity: binary_sensor.smart_ebl_fuse_f1_ok
+            name: F1 (Pump)
+            icon: mdi:fuse
+          - type: entity
+            entity: binary_sensor.smart_ebl_fuse_f2_ok
+            name: F2 (Contour)
+            icon: mdi:fuse
+          - type: entity
+            entity: binary_sensor.smart_ebl_fuse_f3_ok
+            name: F3 (Awning)
+            icon: mdi:fuse
+          - type: entity
+            entity: binary_sensor.smart_ebl_fuse_f4_ok
+            name: F4 (Light)
+            icon: mdi:fuse
+          - type: entity
+            entity: binary_sensor.smart_ebl_fuse_f5_ok
+            name: F5 (Light)
+            icon: mdi:fuse
+          - type: entity
+            entity: binary_sensor.smart_ebl_fuse_f6_ok
+            name: F6 (Perm)
+            icon: mdi:fuse
+          - type: entity
+            entity: binary_sensor.smart_ebl_fuse_f7_ok
+            name: F7 (Perm)
+            icon: mdi:fuse
+          - type: entity
+            entity: binary_sensor.smart_ebl_fuse_f8_ok
+            name: F8 (Perm)
+            icon: mdi:fuse
+          - type: entity
+            entity: binary_sensor.smart_ebl_fuse_f9_ok
+            name: F9 (Fridge)
+            icon: mdi:fuse
+          - type: entity
+            entity: binary_sensor.smart_ebl_fuse_f10_ok
+            name: F10 (Fridge D+)
+            icon: mdi:fuse
+          - type: entity
+            entity: binary_sensor.smart_ebl_fuse_f11_ok
+            name: F11 (AUX)
+            icon: mdi:fuse
+          - type: entity
+            entity: binary_sensor.smart_ebl_fuse_f12_ok
+            name: F12 (AUX)
+            icon: mdi:fuse
+          - type: entity
+            entity: binary_sensor.smart_ebl_fuse_f13_ok
+            name: F13 (AUX)
+            icon: mdi:fuse
+          - type: entity
+            entity: binary_sensor.smart_ebl_fuse_f14_ok
+            name: F14 (12V)
+            icon: mdi:fuse
+          - type: entity
+            entity: binary_sensor.smart_ebl_fuse_f15_ok
+            name: F15 (12V)
+            icon: mdi:fuse
+          - type: entity
+            entity: binary_sensor.smart_ebl_fuse_f16_ok
+            name: F16 (12V)
+            icon: mdi:fuse
+
+      # -------------------------------------------------------------------------
+      # Fuse Voltages (Expandable)
+      # -------------------------------------------------------------------------
+      - type: entities
+        title: Fuse Voltages (Detail)
+        show_header_toggle: false
+        state_color: true
+        entities:
+          - type: section
+            label: Water Pump (F1)
+          - entity: sensor.smart_ebl_fuse_f1_voltage
+            name: F1 Voltage
+          - type: section
+            label: Lights (F2-F5)
+          - entity: sensor.smart_ebl_fuse_f2_voltage
+            name: F2 - Contour Light
+          - entity: sensor.smart_ebl_fuse_f3_voltage
+            name: F3 - Awning Light
+          - entity: sensor.smart_ebl_fuse_f4_voltage
+            name: F4 - Light Group
+          - entity: sensor.smart_ebl_fuse_f5_voltage
+            name: F5 - Light Group
+          - type: section
+            label: Permanent Outputs (F6-F8)
+          - entity: sensor.smart_ebl_fuse_f6_voltage
+            name: F6 - Permanent
+          - entity: sensor.smart_ebl_fuse_f7_voltage
+            name: F7 - Permanent
+          - entity: sensor.smart_ebl_fuse_f8_voltage
+            name: F8 - Permanent
+          - type: section
+            label: Fridge (F9-F10)
+          - entity: sensor.smart_ebl_fuse_f9_voltage
+            name: F9 - Fridge Permanent
+          - entity: sensor.smart_ebl_fuse_f10_voltage
+            name: F10 - Fridge D+ Controlled
+          - type: section
+            label: AUX Group (F11-F13)
+          - entity: sensor.smart_ebl_fuse_f11_voltage
+            name: F11 - AUX
+          - entity: sensor.smart_ebl_fuse_f12_voltage
+            name: F12 - AUX
+          - entity: sensor.smart_ebl_fuse_f13_voltage
+            name: F13 - AUX
+          - type: section
+            label: 12V Group (F14-F16)
+          - entity: sensor.smart_ebl_fuse_f14_voltage
+            name: F14 - 12V
+          - entity: sensor.smart_ebl_fuse_f15_voltage
+            name: F15 - 12V
+          - entity: sensor.smart_ebl_fuse_f16_voltage
+            name: F16 - 12V
+
+  # ===========================================================================
+  # View 4: Truma Heating
+  # ===========================================================================
+  - title: Truma
+    path: truma
+    icon: mdi:fire
+    cards:
+      # -------------------------------------------------------------------------
+      # Main Climate Card
+      # -------------------------------------------------------------------------
+      - type: thermostat
+        entity: climate.smart_ebl_truma_heater
+        name: Truma Heater
+
+      # -------------------------------------------------------------------------
+      # Temperature Sensors
+      # -------------------------------------------------------------------------
+      - type: horizontal-stack
+        cards:
+          - type: gauge
+            entity: sensor.smart_ebl_truma_room_temperature
+            name: Room Temperature
+            min: 0
+            max: 40
+            needle: true
+            segments:
+              - from: 0
+                color: '#2196f3'
+              - from: 15
+                color: '#4caf50'
+              - from: 22
+                color: '#ff9800'
+              - from: 28
+                color: '#f44336'
+
+          - type: gauge
+            entity: sensor.smart_ebl_truma_water_temperature
+            name: Water Temperature
+            min: 0
+            max: 70
+            needle: true
+            segments:
+              - from: 0
+                color: '#2196f3'
+              - from: 30
+                color: '#4caf50'
+              - from: 50
+                color: '#ff9800'
+              - from: 60
+                color: '#f44336'
+
+      # -------------------------------------------------------------------------
+      # Truma Controls
+      # -------------------------------------------------------------------------
+      - type: entities
+        title: Truma Controls
+        show_header_toggle: false
+        entities:
+          - entity: number.smart_ebl_truma_target_room_temp
+            name: Target Room Temperature
+            icon: mdi:thermometer
+          - entity: number.smart_ebl_truma_target_water_temp
+            name: Target Water Temperature
+            icon: mdi:thermometer-water
+          - entity: select.smart_ebl_truma_fan_mode
+            name: Fan Mode
+            icon: mdi:fan
+          - entity: select.smart_ebl_truma_energy_mix
+            name: Energy Mix
+            icon: mdi:gas-burner
+
+      # -------------------------------------------------------------------------
+      # Truma Status
+      # -------------------------------------------------------------------------
+      - type: entities
+        title: Truma Status
+        show_header_toggle: false
+        entities:
+          - entity: binary_sensor.smart_ebl_truma_cp_plus_connected
+            name: CP Plus Connected
+            icon: mdi:connection
+          - entity: binary_sensor.smart_ebl_truma_has_error
+            name: Heater Error
+            icon: mdi:alert-circle
+          - entity: sensor.smart_ebl_truma_error_code
+            name: Error Code
+            icon: mdi:alert
+
+  # ===========================================================================
+  # View 5: System
+  # ===========================================================================
+  - title: System
+    path: system
+    icon: mdi:cog
+    cards:
+      # -------------------------------------------------------------------------
+      # ESP32 Status
+      # -------------------------------------------------------------------------
+      - type: entities
+        title: ESP32 Status
+        show_header_toggle: false
+        entities:
+          - entity: sensor.smart_ebl_esp32_temperature
+            name: CPU Temperature
+            icon: mdi:thermometer
+          - entity: sensor.smart_ebl_uptime
+            name: Uptime
+            icon: mdi:timer
+          - entity: sensor.smart_ebl_wifi_signal
+            name: WiFi Signal
+            icon: mdi:wifi
+
+      # -------------------------------------------------------------------------
+      # Internal Voltages
+      # -------------------------------------------------------------------------
+      - type: entities
+        title: Internal Monitoring
+        show_header_toggle: false
+        entities:
+          - entity: sensor.smart_ebl_voltage_3v3_bus
+            name: 3.3V Bus
+            icon: mdi:flash
+          - entity: sensor.smart_ebl_f10_abs_status
+            name: F10 ABS Status
+            icon: mdi:car-brake-abs
+
+      # -------------------------------------------------------------------------
+      # Additional Controls
+      # -------------------------------------------------------------------------
+      - type: entities
+        title: Additional Controls
+        show_header_toggle: false
+        entities:
+          - entity: switch.smart_ebl_eisex_heater
+            name: EisEx Heater
+            icon: mdi:heating-coil
+          - entity: switch.smart_ebl_d_2_relay
+            name: D+2 Output
+            icon: mdi:car-battery
+          - entity: switch.smart_ebl_fridge_control
+            name: Fridge Control
+            icon: mdi:fridge
+
+      # -------------------------------------------------------------------------
+      # Tank DC Mode Controls
+      # -------------------------------------------------------------------------
+      - type: entities
+        title: Tank DC Mode (Disable while driving)
+        show_header_toggle: true
+        entities:
+          - entity: switch.smart_ebl_tank_1_control
+            name: Tank 1 DC Mode
+            icon: mdi:water
+          - entity: switch.smart_ebl_tank_2_control
+            name: Tank 2 DC Mode
+            icon: mdi:water
+          - entity: switch.smart_ebl_tank_3_control
+            name: Tank 3 DC Mode
+            icon: mdi:water
+
+      # -------------------------------------------------------------------------
+      # DuoControl Gas Status
+      # -------------------------------------------------------------------------
+      - type: entities
+        title: Gas System
+        show_header_toggle: false
+        entities:
+          - entity: sensor.smart_ebl_duocontrol_status
+            name: DuoControl Voltage
+            icon: mdi:gas-cylinder
