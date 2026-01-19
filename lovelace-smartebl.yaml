@@ -31,12 +31,14 @@ views:
             segments:
               - from: 10
                 color: '#db4437'
-              - from: 11.5
-                color: '#ffa600'
-              - from: 12.4
+              - from: 11.0
+                color: '#ff6d00'
+              - from: 11.6
                 color: '#43a047'
               - from: 14.4
-                color: '#ffa600'
+                color: '#ff6d00'
+              - from: 14.8
+                color: '#db4437'
 
           - type: gauge
             entity: sensor.smart_ebl_starter_battery_voltage
@@ -48,17 +50,25 @@ views:
             segments:
               - from: 10
                 color: '#db4437'
-              - from: 11.5
-                color: '#ffa600'
-              - from: 12.4
+              - from: 11.0
+                color: '#ff6d00'
+              - from: 11.6
                 color: '#43a047'
               - from: 14.4
-                color: '#ffa600'
+                color: '#ff6d00'
+              - from: 14.8
+                color: '#db4437'
 
-          - type: entity
+          - type: custom:mushroom-entity-card
             entity: binary_sensor.smart_ebl_shore_power_connected
             name: Shore Power
             icon: mdi:power-plug
+            icon_type: icon
+            layout: vertical
+            primary_info: none
+            secondary_info: none
+            fill_container: true
+            icon_color: yellow
 
       # -------------------------------------------------------------------------
       # Switching Groups - Main Controls
@@ -184,16 +194,12 @@ views:
                 segments:
                   - from: 10
                     color: '#db4437'
-                  - from: 11
+                  - from: 11.0
                     color: '#ff6d00'
-                  - from: 11.5
-                    color: '#ffa600'
-                  - from: 12.2
-                    color: '#8bc34a'
-                  - from: 12.6
+                  - from: 11.6
                     color: '#43a047'
                   - from: 14.4
-                    color: '#ffa600'
+                    color: '#ff6d00'
                   - from: 14.8
                     color: '#db4437'
 
@@ -207,16 +213,12 @@ views:
                 segments:
                   - from: 10
                     color: '#db4437'
-                  - from: 11
+                  - from: 11.0
                     color: '#ff6d00'
-                  - from: 11.5
-                    color: '#ffa600'
-                  - from: 12.2
-                    color: '#8bc34a'
-                  - from: 12.6
+                  - from: 11.6
                     color: '#43a047'
                   - from: 14.4
-                    color: '#ffa600'
+                    color: '#ff6d00'
                   - from: 14.8
                     color: '#db4437'
 
@@ -226,25 +228,74 @@ views:
       - type: entities
         title: Output Monitoring
         show_header_toggle: false
+        state_color: true
         entities:
-          - entity: sensor.smart_ebl_light_output_voltage
+          - type: custom:template-entity-row
+            entity: sensor.smart_ebl_light_output_voltage
             name: Light Output
-            icon: mdi:lightbulb
-          - entity: sensor.smart_ebl_light_l_output_voltage
+            icon: >
+              {% if states('sensor.smart_ebl_light_output_voltage') | float > 1 %}
+                mdi:lightbulb-on
+              {% else %}
+                mdi:lightbulb-off-outline
+              {% endif %}
+            state: "{{ states('sensor.smart_ebl_light_output_voltage') }} V"
+            active: "{{ states('sensor.smart_ebl_light_output_voltage') | float > 1 }}"
+          - type: custom:template-entity-row
+            entity: sensor.smart_ebl_light_l_output_voltage
             name: Light L Output
-            icon: mdi:lightbulb-outline
-          - entity: sensor.smart_ebl_12v_user_output_voltage
+            icon: >
+              {% if states('sensor.smart_ebl_light_l_output_voltage') | float > 1 %}
+                mdi:lightbulb-on
+              {% else %}
+                mdi:lightbulb-off-outline
+              {% endif %}
+            state: "{{ states('sensor.smart_ebl_light_l_output_voltage') }} V"
+            active: "{{ states('sensor.smart_ebl_light_l_output_voltage') | float > 1 }}"
+          - type: custom:template-entity-row
+            entity: sensor.smart_ebl_12v_user_output_voltage
             name: 12V User Output
-            icon: mdi:power-socket-eu
-          - entity: sensor.smart_ebl_12v_aux_output_voltage
+            icon: >
+              {% if states('sensor.smart_ebl_12v_user_output_voltage') | float > 1 %}
+                mdi:power-plug
+              {% else %}
+                mdi:power-plug-off-outline
+              {% endif %}
+            state: "{{ states('sensor.smart_ebl_12v_user_output_voltage') }} V"
+            active: "{{ states('sensor.smart_ebl_12v_user_output_voltage') | float > 1 }}"
+          - type: custom:template-entity-row
+            entity: sensor.smart_ebl_12v_aux_output_voltage
             name: AUX Output
-            icon: mdi:power
-          - entity: sensor.smart_ebl_pump_output_voltage
+            icon: >
+              {% if states('sensor.smart_ebl_12v_aux_output_voltage') | float > 1 %}
+                mdi:power
+              {% else %}
+                mdi:power-off
+              {% endif %}
+            state: "{{ states('sensor.smart_ebl_12v_aux_output_voltage') }} V"
+            active: "{{ states('sensor.smart_ebl_12v_aux_output_voltage') | float > 1 }}"
+          - type: custom:template-entity-row
+            entity: sensor.smart_ebl_pump_output_voltage
             name: Pump Output
-            icon: mdi:water-pump
-          - entity: sensor.smart_ebl_contour_light_output_voltage
+            icon: >
+              {% if states('sensor.smart_ebl_pump_output_voltage') | float > 1 %}
+                mdi:water-pump
+              {% else %}
+                mdi:water-pump-off
+              {% endif %}
+            state: "{{ states('sensor.smart_ebl_pump_output_voltage') }} V"
+            active: "{{ states('sensor.smart_ebl_pump_output_voltage') | float > 1 }}"
+          - type: custom:template-entity-row
+            entity: sensor.smart_ebl_contour_light_output_voltage
             name: Contour Light
-            icon: mdi:car-parking-lights
+            icon: >
+              {% if states('sensor.smart_ebl_contour_light_output_voltage') | float > 1 %}
+                mdi:car-parking-lights
+              {% else %}
+                mdi:car-light-dimmed
+              {% endif %}
+            state: "{{ states('sensor.smart_ebl_contour_light_output_voltage') }} V"
+            active: "{{ states('sensor.smart_ebl_contour_light_output_voltage') | float > 1 }}"
 
       # -------------------------------------------------------------------------
       # Input Status
@@ -281,72 +332,152 @@ views:
 
       - type: grid
         columns: 4
-        square: false
+        square: true
         cards:
-          - type: entity
+          - type: custom:mushroom-entity-card
             entity: binary_sensor.smart_ebl_fuse_f1_ok
-            name: F1 (Pump)
+            name: F1
             icon: mdi:fuse
-          - type: entity
+            icon_type: icon
+            layout: vertical
+            primary_info: name
+            secondary_info: none
+            icon_color: yellow
+          - type: custom:mushroom-entity-card
             entity: binary_sensor.smart_ebl_fuse_f2_ok
-            name: F2 (Contour)
+            name: F2
             icon: mdi:fuse
-          - type: entity
+            icon_type: icon
+            layout: vertical
+            primary_info: name
+            secondary_info: none
+            icon_color: yellow
+          - type: custom:mushroom-entity-card
             entity: binary_sensor.smart_ebl_fuse_f3_ok
-            name: F3 (Awning)
+            name: F3
             icon: mdi:fuse
-          - type: entity
+            icon_type: icon
+            layout: vertical
+            primary_info: name
+            secondary_info: none
+            icon_color: yellow
+          - type: custom:mushroom-entity-card
             entity: binary_sensor.smart_ebl_fuse_f4_ok
-            name: F4 (Light)
+            name: F4
             icon: mdi:fuse
-          - type: entity
+            icon_type: icon
+            layout: vertical
+            primary_info: name
+            secondary_info: none
+            icon_color: yellow
+          - type: custom:mushroom-entity-card
             entity: binary_sensor.smart_ebl_fuse_f5_ok
-            name: F5 (Light)
+            name: F5
             icon: mdi:fuse
-          - type: entity
+            icon_type: icon
+            layout: vertical
+            primary_info: name
+            secondary_info: none
+            icon_color: yellow
+          - type: custom:mushroom-entity-card
             entity: binary_sensor.smart_ebl_fuse_f6_ok
-            name: F6 (Perm)
+            name: F6
             icon: mdi:fuse
-          - type: entity
+            icon_type: icon
+            layout: vertical
+            primary_info: name
+            secondary_info: none
+            icon_color: yellow
+          - type: custom:mushroom-entity-card
             entity: binary_sensor.smart_ebl_fuse_f7_ok
-            name: F7 (Perm)
+            name: F7
             icon: mdi:fuse
-          - type: entity
+            icon_type: icon
+            layout: vertical
+            primary_info: name
+            secondary_info: none
+            icon_color: yellow
+          - type: custom:mushroom-entity-card
             entity: binary_sensor.smart_ebl_fuse_f8_ok
-            name: F8 (Perm)
+            name: F8
             icon: mdi:fuse
-          - type: entity
+            icon_type: icon
+            layout: vertical
+            primary_info: name
+            secondary_info: none
+            icon_color: yellow
+          - type: custom:mushroom-entity-card
             entity: binary_sensor.smart_ebl_fuse_f9_ok
-            name: F9 (Fridge)
+            name: F9
             icon: mdi:fuse
-          - type: entity
+            icon_type: icon
+            layout: vertical
+            primary_info: name
+            secondary_info: none
+            icon_color: yellow
+          - type: custom:mushroom-entity-card
             entity: binary_sensor.smart_ebl_fuse_f10_ok
-            name: F10 (Fridge D+)
+            name: F10
             icon: mdi:fuse
-          - type: entity
+            icon_type: icon
+            layout: vertical
+            primary_info: name
+            secondary_info: none
+            icon_color: yellow
+          - type: custom:mushroom-entity-card
             entity: binary_sensor.smart_ebl_fuse_f11_ok
-            name: F11 (AUX)
+            name: F11
             icon: mdi:fuse
-          - type: entity
+            icon_type: icon
+            layout: vertical
+            primary_info: name
+            secondary_info: none
+            icon_color: yellow
+          - type: custom:mushroom-entity-card
             entity: binary_sensor.smart_ebl_fuse_f12_ok
-            name: F12 (AUX)
+            name: F12
             icon: mdi:fuse
-          - type: entity
+            icon_type: icon
+            layout: vertical
+            primary_info: name
+            secondary_info: none
+            icon_color: yellow
+          - type: custom:mushroom-entity-card
             entity: binary_sensor.smart_ebl_fuse_f13_ok
-            name: F13 (AUX)
+            name: F13
             icon: mdi:fuse
-          - type: entity
+            icon_type: icon
+            layout: vertical
+            primary_info: name
+            secondary_info: none
+            icon_color: yellow
+          - type: custom:mushroom-entity-card
             entity: binary_sensor.smart_ebl_fuse_f14_ok
-            name: F14 (12V)
+            name: F14
             icon: mdi:fuse
-          - type: entity
+            icon_type: icon
+            layout: vertical
+            primary_info: name
+            secondary_info: none
+            icon_color: yellow
+          - type: custom:mushroom-entity-card
             entity: binary_sensor.smart_ebl_fuse_f15_ok
-            name: F15 (12V)
+            name: F15
             icon: mdi:fuse
-          - type: entity
+            icon_type: icon
+            layout: vertical
+            primary_info: name
+            secondary_info: none
+            icon_color: yellow
+          - type: custom:mushroom-entity-card
             entity: binary_sensor.smart_ebl_fuse_f16_ok
-            name: F16 (12V)
+            name: F16
             icon: mdi:fuse
+            icon_type: icon
+            layout: vertical
+            primary_info: name
+            secondary_info: none
+            icon_color: yellow
 
       # -------------------------------------------------------------------------
       # Fuse Voltages (Expandable)
@@ -524,8 +655,8 @@ views:
             name: 3.3V Bus
             icon: mdi:flash
           - entity: sensor.smart_ebl_f10_abs_status
-            name: F10 ABS Status
-            icon: mdi:car-brake-abs
+            name: F10 Absorber Fridge
+            icon: mdi:fridge
 
       # -------------------------------------------------------------------------
       # Additional Controls
