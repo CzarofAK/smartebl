@@ -443,6 +443,7 @@ Uses [skrebber/esphome-truma_inetbox](https://github.com/skrebber/esphome-truma_
 ```
 smartebl/
 ├── smart-ebl.yaml          # Main ESPHome configuration
+├── lovelace-smartebl.yaml  # Home Assistant dashboard
 ├── secrets.yaml            # Credentials (git-ignored)
 ├── secrets.yaml.example    # Credentials template
 ├── .basics.yaml            # Common settings (git-ignored)
@@ -507,7 +508,28 @@ uart:
 
 The Smart EBL automatically integrates with Home Assistant via the native ESPHome API.
 
-### Dashboard Example
+### Pre-built Dashboard
+
+A complete Lovelace dashboard is included in `lovelace-smartebl.yaml` with 5 views:
+
+| View | Contents |
+|------|----------|
+| **Overview** | Battery gauges, switching groups, tank levels, Truma thermostat |
+| **Electrical** | Detailed battery monitoring, output voltages, input status |
+| **Fuses** | F1-F16 status grid with voltage details |
+| **Truma** | Full heating controls, temperature gauges, fan/energy modes |
+| **System** | ESP32 diagnostics, internal voltages, additional controls |
+
+**Installation:**
+
+1. Copy `lovelace-smartebl.yaml` to your Home Assistant config directory
+2. Go to **Settings** > **Dashboards** > **Add Dashboard**
+3. Select "Use YAML configuration" and point to the file, or
+4. Edit any dashboard in raw config mode and paste the contents
+
+### Entity Naming
+
+All entities follow the pattern `<domain>.smart_ebl_<name>`:
 
 ```yaml
 type: entities
