@@ -981,3 +981,160 @@ select:
     type: HEATER_ENERGY_MIX_GAS
     name: "Truma Energy Mix"
     id: truma_energy_mix
+
+# =============================================================================
+# Display Link Protocol (RS232, display_uart) - smartebl_display_esphome
+# =============================================================================
+# Implements the smartebl-side half of
+# smartebl_display_esphome/docs/protocol.md §8 - that repo's own README
+# calls this "separate follow-up work in that repo", done here now that
+# the display side needs real data for its first pages (Mainscreen,
+# Electric/Victron, Climate).
+#
+# display_uart already existed above (GPIO18/19 via the TRS3221 U18
+# RS232 transceiver) but had nothing attached to it in this file - it's
+# the same physical wire the old Nextion generation used, now carrying
+# protocol.md's generic ASCII line protocol instead of Nextion's own
+# serial protocol.
+#
+# Scope of THIS change: groups 1-4 (fuses, tanks, electrical, switches)
+# round-robin broadcast, plus the group-4 command listener - everything
+# the display's Mainscreen/Electric pages need. Groups 5 (Truma) and 6
+# (system) are not sent yet: the display's Climate page reads Truma via
+# the womolin_controller HA/MQTT integration instead of this link (see
+# that repo's docs/pages.md - "same entities m5dial_fram/page_climate.yaml
+# already uses"), so there's no consumer for group 5 over this wire yet.
+# Add it here later (same shape as groups 1-4 below) if a link-based
+# Truma path is ever built on the display side - group 5's keys already
+# exist as protocol.md rows, just unsent.
+
+globals:
+  - id: link_group_cycle
+    type: uint8_t
+    restore_value: false
+    initial_value: "1"
+
+  # Byte-accumulate buffer for the command-frame reader below - same
+  # shape as smartebl_display_esphome's own link_rx_buffer, cleared on
+  # every '\n' and on overflow (protocol.md §3's 480-byte cap).
+  - id: link_rx_buffer
+    type: std::string
+    restore_value: false
+    initial_value: '""'
+
+interval:
+  # Round-robins groups 1-4 every 200ms (protocol.md §4: "smartebl
+  # broadcasts one group every ~200ms, cycling 1->6->1->..." - this
+  # implementation cycles 1->4 until group 5/6 are added).
+  - interval: 200ms
+    then:
+      - lambda: |-
+          uint8_t g = id(link_group_cycle);
+          std::string payload;
+          char buf[24];
+          if (g == 1) {
+            payload = "T1;";
+            float volts[16] = {
+              id(fuse_f1_voltage).state, id(fuse_f2_voltage).state,
+              id(fuse_f3_voltage).state, id(fuse_f4_voltage).state,
+              id(fuse_f5_voltage).state, id(fuse_f6_voltage).state,
+              id(fuse_f7_voltage).state, id(fuse_f8_voltage).state,
+              id(fuse_f9_voltage).state, id(fuse_f10_voltage).state,
+              id(fuse_f11_voltage).state, id(fuse_f12_voltage).state,
+              id(fuse_f13_voltage).state, id(fuse_f14_voltage).state,
+              id(fuse_f15_voltage).state, id(fuse_f16_voltage).state,
+            };
+            for (int i = 0; i < 16; i++) {
+              snprintf(buf, sizeof(buf), "fuse_f%d_voltage=%.2f;", i + 1, volts[i]);
+              payload += buf;
+            }
+          } else if (g == 2) {
+            payload = "T2;";
+            snprintf(buf, sizeof(buf), "tank1_level=%.0f;", id(tank1_level).state);
+            payload += buf;
+            snprintf(buf, sizeof(buf), "tank2_level=%.0f;", id(tank2_level).state);
+            payload += buf;
+            snprintf(buf, sizeof(buf), "tank3_level=%.0f;", id(tank3_level).state);
+            payload += buf;
+          } else if (g == 3) {
+            payload = "T3;";
+            snprintf(buf, sizeof(buf), "leisure_battery_voltage=%.2f;", id(leisure_battery_voltage).state);
+            payload += buf;
+            snprintf(buf, sizeof(buf), "starter_battery_voltage=%.2f;", id(starter_battery_voltage).state);
+            payload += buf;
+            snprintf(buf, sizeof(buf), "ac_charger_voltage=%.2f;", id(ac_charger_voltage).state);
+            payload += buf;
+            payload += id(shore_power_connected).state ? "shore_power_connected=1;" : "shore_power_connected=0;";
+          } else {
+            g = 4;
+            payload = "T4;";
+            payload += id(switch_pump).state ? "switch_pump=1;" : "switch_pump=0;";
+            payload += id(switch_light).state ? "switch_light=1;" : "switch_light=0;";
+            payload += id(switch_12v).state ? "switch_12v=1;" : "switch_12v=0;";
+            payload += id(switch_aux).state ? "switch_aux=1;" : "switch_aux=0;";
+            payload += id(eisex_output).state ? "eisex_output=1;" : "eisex_output=0;";
+          }
+          uint8_t chk = 0;
+          for (char ch : payload) chk ^= (uint8_t) ch;
+          char hex[3];
+          snprintf(hex, sizeof(hex), "%02X", chk);
+          id(display_uart)->write_str((payload + "*" + std::string(hex) + "\n").c_str());
+          id(link_group_cycle) = (g % 4) + 1;
+
+  # Command-frame reader ("C;key=value;*XX") - same byte-accumulate-
+  # until-'\n' shape as smartebl_display_esphome's own reader
+  # (protocol.md §9 calls this out as the shape to copy on both ends).
+  - interval: 20ms
+    then:
+      - lambda: |-
+          uint8_t c;
+          while (id(display_uart)->available()) {
+            id(display_uart)->read_byte(&c);
+            if (c == '\n') {
+              std::string &line = id(link_rx_buffer);
+              size_t star = line.rfind('*');
+              if (!line.empty() && line[0] == 'C' && star != std::string::npos &&
+                  star + 2 < line.size()) {
+                uint8_t chk = 0;
+                for (size_t i = 0; i < star; i++) {
+                  chk ^= (uint8_t) line[i];
+                }
+                uint8_t got = (uint8_t) strtol(line.substr(star + 1, 2).c_str(), nullptr, 16);
+                if (chk == got) {
+                  size_t pos = 2; // skip "C;"
+                  while (pos < star) {
+                    size_t semi = line.find(';', pos);
+                    if (semi == std::string::npos || semi > star) semi = star;
+                    std::string kv = line.substr(pos, semi - pos);
+                    size_t eq = kv.find('=');
+                    if (eq != std::string::npos) {
+                      std::string key = kv.substr(0, eq);
+                      bool on = kv.substr(eq + 1) == "1";
+                      if (key == "switch_pump") {
+                        on ? id(switch_pump).turn_on() : id(switch_pump).turn_off();
+                      } else if (key == "switch_light") {
+                        on ? id(switch_light).turn_on() : id(switch_light).turn_off();
+                      } else if (key == "switch_12v") {
+                        on ? id(switch_12v).turn_on() : id(switch_12v).turn_off();
+                      } else if (key == "switch_aux") {
+                        on ? id(switch_aux).turn_on() : id(switch_aux).turn_off();
+                      } else if (key == "eisex_output") {
+                        on ? id(eisex_output).turn_on() : id(eisex_output).turn_off();
+                      }
+                      // Unknown keys ignored on purpose - protocol.md
+                      // §3's forward-compatibility rule.
+                    }
+                    pos = semi + 1;
+                  }
+                }
+              }
+              line.clear();
+            } else if (c != '\r') {
+              if (id(link_rx_buffer).size() < 480) {
+                id(link_rx_buffer).push_back((char) c);
+              } else {
+                // Overflow guard (protocol.md §3) - drop and resync.
+                id(link_rx_buffer).clear();
+              }
+            }
+          }
