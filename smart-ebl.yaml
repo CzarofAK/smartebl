@@ -33,6 +33,19 @@ esp32:
   framework:
     type: esp-idf
     version: recommended
+    advanced:
+      # Build warning: "Chip rev >= 3.0 detected. Set minimum_chip_revision:
+      # '3.1' ... to reduce binary size". Narrows compiler workarounds to
+      # silicon rev 3.1+, which is what recent ESP32-WROVER-IE-N16R8 batches
+      # ship. NOTE: if an older board batch with chip rev < 3.1 ever turns
+      # up, drop this (or lower the value) - it won't boot on that silicon
+      # otherwise. Worth confirming against your actual production batches.
+      minimum_chip_revision: "3.1"
+      # Build warning: "Bootloader supports SRAM1 as IRAM (+40KB). Set
+      # sram1_as_iram: true ...". Frees extra room for code (IRAM) at the
+      # cost of that 40KB no longer being available as regular data SRAM -
+      # fine here since PSRAM (8MB, WROVER-IE-N16R8) covers the heap.
+      sram1_as_iram: true
 
 # Include external basics (wifi, ota, api, etc.)
 packages:
