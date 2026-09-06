@@ -19,9 +19,11 @@ esphome:
   on_boot:
     priority: -100  # Run early, before other components initialize
     then:
-      - output.turn_off: lin_ms # OFF=Slave, ON=Master
-      - output.turn_off: lin_wake # OFF=Normal, ON=Wakeup
-      - output.turn_off: lin_slp # OFF=Normal, ON=Sleep
+      # LIN control pins (Truma) - optional, only needed if the LIN/Truma
+      # block below is uncommented.
+      # - output.turn_off: lin_ms # OFF=Slave, ON=Master
+      # - output.turn_off: lin_wake # OFF=Normal, ON=Wakeup
+      # - output.turn_off: lin_slp # OFF=Normal, ON=Sleep
       - output.turn_on: can_term # Terminating resistor enabled after boot if ON
       - output.turn_off: can_stb # Transceiver active after boot if OFF
 
@@ -47,12 +49,13 @@ external_components:
       path: components
     components: [ads7830]
 
-  # Truma iNetbox LIN integration
-  - source:
-      type: git
-      url: https://github.com/skrebber/esphome-truma_inetbox
-      ref: main
-    components: [truma_inetbox]
+  # Truma iNetbox LIN integration - optional, only needed if the LIN/Truma
+  # block is uncommented (uart: lin_uart, output: lin_ms/lin_wake/lin_slp,
+  # truma_inetbox:, and the Truma sensor/binary_sensor/climate/number/select
+  # entries further below).
+  # - source: github://havanti/esphome-truma@v1.0.24
+  #   components: [truma_inetbox, uart]
+  #   refresh: never
 
 # =============================================================================
 # I2C Bus Configuration
@@ -84,18 +87,20 @@ mcp23017:
 
 output:
 
-  - platform: gpio
-    id: lin_ms
-    pin: GPIO25
-    # OFF=Slave, ON=Master
-  - platform: gpio
-    id: lin_wake
-    pin: GPIO26
-    # OFF=Normal, ON=Wakeup
-  - platform: gpio
-    id: lin_slp
-    pin: GPIO27
-    # OFF=Normal, ON=Sleep
+  # LIN control pins (TJA1021T U14) - optional, only needed for the LIN/Truma
+  # block below.
+  # - platform: gpio
+  #   id: lin_ms
+  #   pin: GPIO25
+  #   # OFF=Slave, ON=Master
+  # - platform: gpio
+  #   id: lin_wake
+  #   pin: GPIO26
+  #   # OFF=Normal, ON=Wakeup
+  # - platform: gpio
+  #   id: lin_slp
+  #   pin: GPIO27
+  #   # OFF=Normal, ON=Sleep
 
     # CAN Bus Control Pins (via SN65HVD234 U3)
   - platform: gpio
@@ -139,15 +144,16 @@ canbus:
 # =============================================================================
 
 uart:
-  # LIN Bus for Truma CP Plus (via TJA1021T U14)
+  # LIN Bus for Truma CP Plus (via TJA1021T U14) - optional, only needed for
+  # the LIN/Truma block below.
   # GPIO12 = TXD1, GPIO13 = RXD1
-  - id: lin_uart
-    tx_pin: GPIO12
-    rx_pin: GPIO13
-    baud_rate: 9600
-    data_bits: 8
-    parity: NONE
-    stop_bits: 2
+  # - id: lin_uart
+  #   tx_pin: GPIO12
+  #   rx_pin: GPIO13
+  #   baud_rate: 9600
+  #   data_bits: 8
+  #   parity: NONE
+  #   stop_bits: 2
 
   # Display (via TRS3221 RS-232 transceiver U18, RJ45 to display)
   # GPIO18 = TXD2, GPIO19 = RXD2
@@ -158,12 +164,17 @@ uart:
     baud_rate: 115200
 
 # =============================================================================
-# Truma iNetbox Integration
+# Truma iNetbox Integration (optional - LIN bus)
 # =============================================================================
+# The whole LIN/Truma feature is optional and disabled by default. To enable
+# it, uncomment this block together with: the external_components entry
+# above (github://havanti/esphome-truma@v1.0.24), uart: lin_uart, output:
+# lin_ms/lin_wake/lin_slp, their on_boot actions, and the Truma
+# sensor/binary_sensor/climate/number/select entries further below.
 
-truma_inetbox:
-  id: truma
-  uart_id: lin_uart
+# truma_inetbox:
+#   id: truma
+#   uart_id: lin_uart
 
 # =============================================================================
 # Sensors - Fuse Voltage Monitoring
@@ -540,26 +551,26 @@ sensor:
       - multiply: 6.62
 
   # ---------------------------------------------------------------------------
-  # Truma Sensors
+  # Truma Sensors (optional - requires the LIN/Truma block enabled above)
   # ---------------------------------------------------------------------------
 
-  - platform: truma_inetbox
-    truma_inetbox_id: truma
-    type: CURRENT_ROOM_TEMPERATURE
-    name: "Truma Room Temperature"
-    id: truma_room_temp
+  # - platform: truma_inetbox
+  #   truma_inetbox_id: truma
+  #   type: CURRENT_ROOM_TEMPERATURE
+  #   name: "Truma Room Temperature"
+  #   id: truma_room_temp
 
-  - platform: truma_inetbox
-    truma_inetbox_id: truma
-    type: CURRENT_WATER_TEMPERATURE
-    name: "Truma Water Temperature"
-    id: truma_water_temp
+  # - platform: truma_inetbox
+  #   truma_inetbox_id: truma
+  #   type: CURRENT_WATER_TEMPERATURE
+  #   name: "Truma Water Temperature"
+  #   id: truma_water_temp
 
-  - platform: truma_inetbox
-    truma_inetbox_id: truma
-    type: HEATER_ERROR_CODE
-    name: "Truma Error Code"
-    id: truma_error_code
+  # - platform: truma_inetbox
+  #   truma_inetbox_id: truma
+  #   type: HEATER_ERROR_CODE
+  #   name: "Truma Error Code"
+  #   id: truma_error_code
 
   # ---------------------------------------------------------------------------
   # System Diagnostics
@@ -699,20 +710,20 @@ binary_sensor:
     device_class: plug
 
   # ---------------------------------------------------------------------------
-  # Truma Binary Sensors
+  # Truma Binary Sensors (optional - requires the LIN/Truma block enabled above)
   # ---------------------------------------------------------------------------
 
-  - platform: truma_inetbox
-    truma_inetbox_id: truma
-    type: CP_PLUS_CONNECTED
-    name: "Truma CP Plus Connected"
-    id: truma_connected
+  # - platform: truma_inetbox
+  #   truma_inetbox_id: truma
+  #   type: CP_PLUS_CONNECTED
+  #   name: "Truma CP Plus Connected"
+  #   id: truma_connected
 
-  - platform: truma_inetbox
-    truma_inetbox_id: truma
-    type: HEATER_HAS_ERROR
-    name: "Truma Has Error"
-    id: truma_has_error
+  # - platform: truma_inetbox
+  #   truma_inetbox_id: truma
+  #   type: HEATER_HAS_ERROR
+  #   name: "Truma Has Error"
+  #   id: truma_has_error
 
 
 # =============================================================================
@@ -940,49 +951,49 @@ switch:
       - switch.turn_on: relay_aux_off_coil
 
 # =============================================================================
-# Climate - Truma Heater
+# Climate - Truma Heater (optional - requires the LIN/Truma block enabled above)
 # =============================================================================
 
-climate:
-  - platform: truma_inetbox
-    truma_inetbox_id: truma
-    type: ROOM
-    name: "Truma Heater"
-    id: truma_heater
+# climate:
+#   - platform: truma_inetbox
+#     truma_inetbox_id: truma
+#     type: ROOM
+#     name: "Truma Heater"
+#     id: truma_heater
 
 # =============================================================================
-# Number Controls - Truma Settings
+# Number Controls - Truma Settings (optional - requires the LIN/Truma block enabled above)
 # =============================================================================
 
-number:
-  - platform: truma_inetbox
-    truma_inetbox_id: truma
-    type: TARGET_ROOM_TEMPERATURE
-    name: "Truma Target Room Temp"
-    id: truma_target_room_temp
+# number:
+#   - platform: truma_inetbox
+#     truma_inetbox_id: truma
+#     type: TARGET_ROOM_TEMPERATURE
+#     name: "Truma Target Room Temp"
+#     id: truma_target_room_temp
 
-  - platform: truma_inetbox
-    truma_inetbox_id: truma
-    type: TARGET_WATER_TEMPERATURE
-    name: "Truma Target Water Temp"
-    id: truma_target_water_temp
+#   - platform: truma_inetbox
+#     truma_inetbox_id: truma
+#     type: TARGET_WATER_TEMPERATURE
+#     name: "Truma Target Water Temp"
+#     id: truma_target_water_temp
 
 # =============================================================================
-# Select Controls - Truma Modes
+# Select Controls - Truma Modes (optional - requires the LIN/Truma block enabled above)
 # =============================================================================
 
-select:
-  - platform: truma_inetbox
-    truma_inetbox_id: truma
-    type: HEATER_FAN_MODE_COMBI
-    name: "Truma Fan Mode"
-    id: truma_fan_mode
+# select:
+#   - platform: truma_inetbox
+#     truma_inetbox_id: truma
+#     type: HEATER_FAN_MODE_COMBI
+#     name: "Truma Fan Mode"
+#     id: truma_fan_mode
 
-  - platform: truma_inetbox
-    truma_inetbox_id: truma
-    type: HEATER_ENERGY_MIX_GAS
-    name: "Truma Energy Mix"
-    id: truma_energy_mix
+#   - platform: truma_inetbox
+#     truma_inetbox_id: truma
+#     type: HEATER_ENERGY_MIX_GAS
+#     name: "Truma Energy Mix"
+#     id: truma_energy_mix
 
 # =============================================================================
 # Display Connection - choose ONE of the two options below
