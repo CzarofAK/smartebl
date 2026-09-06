@@ -33,7 +33,8 @@ esp32:
     version: recommended
 
 # Include external basics (wifi, ota, api, etc.)
-<<: !include .basics.yaml
+packages:
+  basics: !include .basics.yaml
 
 # =============================================================================
 # External Components
@@ -148,8 +149,9 @@ uart:
     parity: NONE
     stop_bits: 2
 
-  # Nextion Display (via TRS3221 RS-232 transceiver U18)
+  # Display (via TRS3221 RS-232 transceiver U18, RJ45 to display)
   # GPIO18 = TXD2, GPIO19 = RXD2
+  # Shared by both display options below - see "Display Connection" section
   - id: display_uart
     tx_pin: GPIO18
     rx_pin: GPIO19
@@ -983,19 +985,70 @@ select:
     id: truma_energy_mix
 
 # =============================================================================
-# Display Link Protocol (RS232, display_uart) - smartebl_display_esphome
+# Display Connection - choose ONE of the two options below
 # =============================================================================
-# Implements the smartebl-side half of
+# Both options talk over the same physical wire: display_uart
+# (GPIO18/19 via the TRS3221 U18 RS232 transceiver, RJ45 to the display).
+# Only one display generation can be attached at a time, so uncomment
+# exactly one of "Option A" or "Option B" and leave the other commented
+# out - running both means two consumers fighting over the same UART.
+
+# -----------------------------------------------------------------------------
+# Option A: Nextion display (native ESPHome component)
+# -----------------------------------------------------------------------------
+# Uncomment this block (and comment out Option B below) to go back to the
+# original Nextion NX8048P070-011C wired directly to display_uart, driven
+# by ESPHome's built-in `nextion:` display platform instead of the
+# smartebl_display_esphome link protocol.
+#
+# This is only a minimal starting skeleton, not a full UI: the actual
+# component names (bars, texts, page ids, ...) come from your own Nextion
+# Editor (.HMI) project and need to be filled into the lambda below. The
+# (now superseded) smartebl_display repo's nextion_esphome_config.yaml
+# shows how a full page-driven lambda looked for the previous-generation
+# HMI project - useful as a reference, but its component names don't match
+# the sensors/switches defined in this file and can't be copied as-is.
+#
+# display:
+#   - platform: nextion
+#     id: nextion_display
+#     uart_id: display_uart
+#     update_interval: 500ms
+#     lambda: |-
+#       // TODO: map your Nextion HMI component names to the entities
+#       // already defined in this file, e.g.:
+#       //   it.set_component_value("bar_fresh", id(tank1_level).state);
+#       //   it.set_component_text_printf("val_fresh", "%.0f%%", id(tank1_level).state);
+#       //
+#       // Entities available from this file include (non-exhaustive):
+#       //   tank1_level / tank2_level / tank3_level
+#       //   fuse_f1_voltage ... fuse_f16_voltage
+#       //   leisure_battery_voltage / starter_battery_voltage / ac_charger_voltage
+#       //   shore_power_connected
+#       //   switch_pump / switch_light / switch_12v / switch_aux / eisex_output
+#
+# # Touch events from the Nextion HMI project are wired up separately, e.g.:
+# # binary_sensor:
+# #   - platform: nextion
+# #     page_id: 0
+# #     component_id: 1
+# #     name: "Nextion Pump Button"
+# #     on_press:
+# #       - switch.toggle: switch_pump
+
+# -----------------------------------------------------------------------------
+# Option B: Waveshare display board (smartebl_display_esphome link protocol)
+# -----------------------------------------------------------------------------
+# Active by default. Implements the smartebl-side half of
 # smartebl_display_esphome/docs/protocol.md §8 - that repo's own README
 # calls this "separate follow-up work in that repo", done here now that
 # the display side needs real data for its first pages (Mainscreen,
 # Electric/Victron, Climate).
 #
-# display_uart already existed above (GPIO18/19 via the TRS3221 U18
-# RS232 transceiver) but had nothing attached to it in this file - it's
-# the same physical wire the old Nextion generation used, now carrying
-# protocol.md's generic ASCII line protocol instead of Nextion's own
-# serial protocol.
+# display_uart carries protocol.md's generic ASCII line protocol instead
+# of Nextion's own serial protocol, to a second ESP32 board
+# (smartebl_display_esphome, Waveshare ESP32-P4-WIFI6-POE-ETH + 10.1"
+# DSI touch panel) running its own independent ESPHome firmware.
 #
 # Scope of THIS change: groups 1-4 (fuses, tanks, electrical, switches)
 # round-robin broadcast, plus the group-4 command listener - everything
