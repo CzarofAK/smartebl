@@ -597,10 +597,6 @@ sensor:
     name: "Uptime"
     update_interval: 60s
 
-  - platform: wifi_signal
-    name: "WiFi Signal"
-    update_interval: 60s
-
 # =============================================================================
 # Binary Sensors
 # =============================================================================
