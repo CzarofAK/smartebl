@@ -9,6 +9,12 @@
 substitutions:
   name: smart-ebl
   friendly_name: Smart EBL
+  # LIN UART pins (TJA1021T U14). Per information/ESP32 Pinout.md GPIO12 =
+  # TXD1 (ESP -> TJA1021 TXD) and GPIO13 = RXD1 (TJA1021 RXD -> ESP). If the
+  # LIN link stays dead and "LIN RX Idle High" is OFF, swap these two as a test.
+  lin_tx_pin: GPIO12
+  lin_rx_pin: GPIO13
+  lin_rx_pin_num: "13"   # same pin as lin_rx_pin, number only
 
 esphome:
   name: ${name}
@@ -25,6 +31,18 @@ esphome:
       # on a rising edge on SLP_N and must be set very early in setup().
       - output.turn_off: lin_ms # OFF=Slave (Truma CP Plus is the LIN master)
       - output.turn_off: lin_wake # OFF=Normal, ON=Wakeup pulse
+      # TJA1021 RXD is an OPEN-DRAIN output and needs a pull-up. The havanti
+      # uart component ignores `pullup: true` on rx_pin (it never calls
+      # pin->setup()), and ESP-IDF's uart_set_pin() does not enable one
+      # either -> without an external resistor on the board RXD1 floats and
+      # not a single LIN byte is received. Enable the ESP32 internal pull-up
+      # here, after the uart has been set up (harmless if the board already
+      # has an external pull-up).
+      - lambda: |-
+          gpio_num_t rx = (gpio_num_t) ${lin_rx_pin_num};
+          gpio_pulldown_dis(rx);
+          gpio_pullup_en(rx);
+          ESP_LOGI("lin", "Internal pull-up enabled on LIN RX GPIO%d", (int) rx);
       - output.turn_on: can_term # Terminating resistor enabled after boot if ON
       - output.turn_off: can_stb # Transceiver active after boot if OFF
 
@@ -168,8 +186,10 @@ uart:
   # pin 5 = GND). Truma LIN runs at 9600 baud, 8N2 - do not change.
   # GPIO12 = TXD1, GPIO13 = RXD1 (not crossed - ESP TX -> TJA1021 TXD)
   - id: lin_uart
-    tx_pin: GPIO12
-    rx_pin: GPIO13
+    tx_pin: ${lin_tx_pin}
+    # Pull-up for the open-drain TJA1021 RXD is set in esphome: on_boot
+    # (the havanti uart has no pin pull-up option).
+    rx_pin: ${lin_rx_pin}
     baud_rate: 9600
     data_bits: 8
     parity: NONE
@@ -800,6 +820,22 @@ binary_sensor:
     type: HEATER_WATER
     name: "Truma Water Heater Active"
     id: truma_water_heater_active
+
+  # ---------------------------------------------------------------------------
+  # LIN diagnostics
+  # ---------------------------------------------------------------------------
+  # Reads the level of the LIN RX pin directly (works while the uart uses it).
+  # Expected: ON almost all the time (bus idle = recessive = RXD HIGH).
+  #   Permanently OFF -> TJA1021 still in Standby (RXD LOW, see "LIN
+  #   Transceiver Active"), no 12V on the transceiver, or TX/RX swapped.
+  #   Flickering while the CP Plus is on -> bus traffic arrives, the problem
+  #   is then protocol/slot (lin_checksum, CP Plus "PR SET").
+  - platform: template
+    name: "LIN RX Idle High"
+    id: lin_rx_idle_high
+    entity_category: diagnostic
+    lambda: |-
+      return gpio_get_level((gpio_num_t) ${lin_rx_pin_num}) == 1;
 
 
 # =============================================================================

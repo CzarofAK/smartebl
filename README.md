@@ -476,6 +476,7 @@ For a diesel Combi (D6E) change the energy mix select to
 | Symptom | Cause / fix |
 |---------|-------------|
 | No LIN frames at all in the DEBUG log | TJA1021 still asleep: `LIN Transceiver Active` must be ON (SLP_N HIGH). If LIN only works with it OFF, the board inverts the signal - set `inverted: true` on GPIO27. Also check 12V on the transceiver and the RJ12 pinout. |
+| `LIN RX Idle High` permanently OFF / no frames at all | TJA1021 RXD is open-drain and needs a pull-up. The firmware enables the ESP32 internal pull-up on GPIO13 in `on_boot` (the havanti uart ignores pin pull-up options). If it stays OFF: check `LIN Transceiver Active`, 12V (VBAT) at the TJA1021, and try swapping `lin_tx_pin`/`lin_rx_pin` in `substitutions`. |
 | Frames arrive, CP Plus never connects | `lin_checksum` must be `VERSION_2`; re-run CP Plus init (PR SET). |
 | `uart marked FAILED` / `Cannot update Truma` | Use havanti >= v1.0.23; the real error is only in the **serial** (USB) boot log. |
 
