@@ -1,3 +1,6 @@
+api:
+  encryption:
+    key: !secret api_encryption_key
 ota:
   - platform: esphome
     id: ota_esphome

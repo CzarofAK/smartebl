@@ -79,7 +79,7 @@
 | Outputs | 8 | Light, Light L, 12V, AUX, Pump, Contour Light output voltage |
 | Tanks | 3 | Tank 1, Tank 2, Tank 3 levels |
 | Inputs | 5 | Duocontrol, shore power, D+ signal, F10 ABS, 3.3V bus |
-| Truma | 3 | Room/water temp, error code |
+| Truma | 5 | Room/water temp, error code, operating status, energy mix status |
 | System | 3 | WiFi signal, ESP32 temp, uptime |
 
 ### Binary Sensors (~20)
@@ -87,15 +87,15 @@
 | Category | Entities | Description |
 |----------|----------|-------------|
 | Fuse Status | 16 | F1-F16 OK/blown detection |
-| Truma | 2 | CP Plus connected, has error |
+| Truma | 4 | CP Plus connected, has error, room/water heater active |
 | Inputs | 2 | D+ active, shore power connected |
 
 ### Controls (~20)
 
 | Type | Entities | Description |
 |------|----------|-------------|
-| Switches | 10 | Water Pump, Light Group, 12V Group, AUX Group, EisEx, D+2 Relay, Fridge, Tank 1-3 DC control |
-| Climate | 1 | Truma room heater |
+| Switches | 11 | LIN Transceiver Active (config), Water Pump, Light Group, 12V Group, AUX Group, EisEx, D+2 Relay, Fridge, Tank 1-3 DC control |
+| Climate | 2 | Truma room heater, Truma water heater (boiler) |
 | Number | 2 | Truma target room/water temp |
 | Select | 2 | Truma energy mix, fan mode |
 
@@ -207,9 +207,9 @@ time:
 | GPIO21 | SDA | I2C Data | Bidir | ADS7830 ADCs + MCP23017 |
 | GPIO22 | SCL | I2C Clock | Bidir | ADS7830 ADCs + MCP23017 |
 | GPIO23 | CAN_TERM | CAN Termination | Output | Software switchable |
-| GPIO25 | LIN_MS | LIN Master/Slave | Output | TJA1021T control |
-| GPIO26 | LIN_WAKE | LIN Wake | Output | TJA1021T control |
-| GPIO27 | LIN_SLP | LIN Sleep | Output | TJA1021T control |
+| GPIO25 | LIN_MS | LIN Master/Slave | Output | Master pull-up, OFF = Slave (Truma) |
+| GPIO26 | LIN_WAKE | LIN Wake | Output | TJA1021T WAKE_N, OFF = normal |
+| GPIO27 | LIN_SLP | LIN Sleep | Output | TJA1021T SLP_N (active low), must be HIGH = Normal mode |
 | GPIO32 | CAN_1_STB | CAN Standby | Output | SN65HVD234 control |
 | GPIO33 | IO_RESET | MCP23017 Reset | - | External 10k pull-up (not configured in firmware) |
 | GPIO34 | - | SW1 Mode | Input | Onboard button, function TBD |
@@ -424,17 +424,63 @@ The Smart EBL integrates with Truma CP Plus heaters via LIN bus, emulating a Tru
 
 ### Hardware Connection
 
-Connect the Smart EBL to the Truma CP Plus using an RJ12 cable to the LIN bus port.
+Connect the Smart EBL (J10, RJ12) to a free LIN port of the Truma CP Plus /
+heater with a 1:1 RJ12 cable.
 
 | Pin | Signal |
 |-----|--------|
-| 1 | +12V |
-| 2 | LIN |
-| 3 | GND |
+| 1 | NC |
+| 2 | NC |
+| 3 | LIN |
+| 4 | NC |
+| 5 | GND |
+| 6 | NC |
 
 ### External Component
 
-Uses [skrebber/esphome-truma_inetbox](https://github.com/skrebber/esphome-truma_inetbox) - a fork with fixes for newer ESPHome versions.
+Uses [havanti/esphome-truma](https://github.com/havanti/esphome-truma)
+(pinned to `v1.0.32`, required for ESPHome >= 2026.9.0) - a maintained fork
+of Fabian Schmidt's `esphome-truma_inetbox`. It also replaces ESPHome's
+`uart` component (needed for LIN break detection); this applies to
+`display_uart` as well and is intended.
+
+### ESPHome pieces (all in `smart-ebl.yaml`)
+
+| Section | Entry | Purpose |
+|---------|-------|---------|
+| `external_components` | `havanti/esphome-truma@v1.0.32` | `truma_inetbox` + patched `uart` |
+| `uart` | `lin_uart` GPIO12/13, 9600 baud, 8N2 | LIN via TJA1021T (U14) |
+| `output` | `lin_ms` (GPIO25), `lin_wake` (GPIO26) | Slave mode, no wake pulse (both OFF at boot) |
+| `switch` | `lin_slp` "LIN Transceiver Active" (GPIO27) | TJA1021 SLP_N, `ALWAYS_ON`, turns itself back ON 60 s after being switched OFF |
+| `truma_inetbox` | `id: truma`, `lin_checksum: VERSION_2` | iNet Box emulation |
+| `sensor` | room/water temp, error code, operating status, energy mix status | Readbacks |
+| `binary_sensor` | CP Plus connected, has error, room/water heater active | Status |
+| `climate` | `Truma Heater` (ROOM), `Truma Water Heater` (WATER) | Control |
+| `number` | target room / water temp | Control |
+| `select` | fan mode (Combi), energy mix (gas) | Control |
+
+For a diesel Combi (D6E) change the energy mix select to
+`HEATER_ENERGY_MIX_DIESEL`.
+
+### Commissioning
+
+1. Flash the firmware, connect J10 to the CP Plus.
+2. Check that the switch **LIN Transceiver Active** is ON.
+3. Run the CP Plus initialisation once (**Service -> RESET -> PR SET**).
+   The CP Plus only assigns LIN slave slots during initialisation - without
+   this step the Smart EBL is never polled.
+4. **Truma CP Plus Connected** must turn ON within a few seconds.
+
+### Troubleshooting
+
+| Symptom | Cause / fix |
+|---------|-------------|
+| No LIN frames at all in the DEBUG log | TJA1021 still asleep: `LIN Transceiver Active` must be ON (SLP_N HIGH). If LIN only works with it OFF, the board inverts the signal - set `inverted: true` on GPIO27. Also check 12V on the transceiver and the RJ12 pinout. |
+| `LIN RX Idle High` permanently OFF / no frames at all | TJA1021 RXD is open-drain and needs a pull-up. The firmware enables the ESP32 internal pull-up on GPIO13 in `on_boot` (the havanti uart ignores pin pull-up options). If it stays OFF: check `LIN Transceiver Active`, 12V (VBAT) at the TJA1021, and try swapping `lin_tx_gpio`/`lin_rx_gpio` in `substitutions`. |
+| Frames arrive, CP Plus never connects | `lin_checksum` must be `VERSION_2`; re-run CP Plus init (PR SET). |
+| `uart marked FAILED` / `Cannot update Truma` | Use havanti >= v1.0.23; the real error is only in the **serial** (USB) boot log. |
+
+Details: [havanti TROUBLESHOOTING.md](https://github.com/havanti/esphome-truma/blob/main/TROUBLESHOOTING.md)
 
 ---
 
@@ -491,16 +537,10 @@ sensor:
 
 ### LIN Bus Driver
 
-Generic LIN bus master/slave implementation for the TJA1021T transceiver.
-
-```yaml
-uart:
-  - id: uart_lin
-    tx_pin: GPIO13
-    rx_pin: GPIO12
-    baud_rate: 9600
-    stop_bits: 2
-```
+Generic LIN bus master/slave driver for the TJA1021T (`components/lin_bus`).
+**Not used by `smart-ebl.yaml`** - the Truma integration uses
+`truma_inetbox` from havanti/esphome-truma instead, which brings its own
+LIN handling. Do not load both on the same UART.
 
 ---
 
@@ -610,6 +650,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [Daniel Fett](https://github.com/danielfett/inetbox.py) - Original Truma protocol decode
 - [Fabian Schmidt](https://github.com/Fabian-Schmidt/esphome-truma_inetbox) - ESPHome Truma component
 - [skrebber](https://github.com/skrebber/esphome-truma_inetbox) - Truma component fixes
+- [havanti](https://github.com/havanti/esphome-truma) - maintained Truma fork used by this project
 
 ---
 

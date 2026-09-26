@@ -201,7 +201,7 @@ smartebl/
 | Component | Purpose | Status |
 |-----------|---------|--------|
 | `ads7830` | 8-bit 8-channel I2C ADC | Implemented |
-| `lin_bus` | LIN bus master/slave (TJA1021T) | Implemented |
+| `lin_bus` | LIN bus master/slave (TJA1021T) | Implemented, NOT used (Truma uses havanti `truma_inetbox`) |
 
 ### Native ESPHome Components Used
 - `nextion` - Display communication
@@ -246,9 +246,9 @@ esphome upload smart-ebl.yaml --device smart-ebl.local
 | GPIO21 | SDA | I2C Data | ADS7830 ADCs + MCP23017 |
 | GPIO22 | SCL | I2C Clock | ADS7830 ADCs + MCP23017 |
 | GPIO23 | CAN_TERM | CAN Termination | Software switchable |
-| GPIO25 | LIN_MS | LIN Master/Slave | TJA1021T control |
-| GPIO26 | LIN_WAKE | LIN Wake | TJA1021T control |
-| GPIO27 | LIN_SLP | LIN Sleep | TJA1021T control |
+| GPIO25 | LIN_MS | LIN Master/Slave | OFF = Slave (Truma) |
+| GPIO26 | LIN_WAKE | LIN Wake | TJA1021T WAKE_N, OFF = normal |
+| GPIO27 | LIN_SLP | LIN Sleep | TJA1021T SLP_N (active LOW) - must be HIGH, rising edge -> Normal mode |
 | GPIO32 | CAN_1_STB | CAN Standby | SN65HVD234 control |
 | GPIO33 | IO_RESET | MCP23017 Reset | Pin 14 on MCP23017 |
 | GPIO34 | - | SW1 Mode Button | Function TBD |
@@ -334,6 +334,15 @@ Bistable (latching) relays require a pulse to toggle state. Controlled via MCP23
 ```
 
 ## Session Notes
+
+### 2026-09-26
+- **LIN/Truma FIX:** TJA1021 SLP_N (GPIO27) was driven LOW ("OFF=Normal"). SLP_N is
+  active LOW and the TJA1021 only enters Normal mode on a rising edge -> transceiver
+  stayed asleep, no LIN traffic. Now a gpio switch `lin_slp` with `restore_mode: ALWAYS_ON`.
+- Re-enabled the full LIN/Truma block, havanti/esphome-truma bumped v1.0.24 -> v1.0.32
+  (ESPHome 2026.9 build fixes), `lin_checksum: VERSION_2`, extra entities (water climate,
+  operating status, energy mix status, room/water heater active).
+- README: fixed RJ12 pinout (LIN = pin 3, GND = pin 5), commissioning + troubleshooting.
 
 ### 2025-01-16
 - **CRITICAL FIX:** Discovered relay control uses MCP23017 IO expander (U17), not direct ESP32 GPIO
