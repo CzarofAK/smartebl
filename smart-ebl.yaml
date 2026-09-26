@@ -12,9 +12,10 @@ substitutions:
   # LIN UART pins (TJA1021T U14). Per information/ESP32 Pinout.md GPIO12 =
   # TXD1 (ESP -> TJA1021 TXD) and GPIO13 = RXD1 (TJA1021 RXD -> ESP). If the
   # LIN link stays dead and "LIN RX Idle High" is OFF, swap these two as a test.
-  lin_tx_pin: GPIO12
-  lin_rx_pin: GPIO13
-  lin_rx_pin_num: "13"   # same pin as lin_rx_pin, number only
+  # GPIO numbers only - used for the uart pins AND the pull-up/diagnostic
+  # lambdas, so there is a single place to change them.
+  lin_tx_gpio: "12"
+  lin_rx_gpio: "13"
 
 esphome:
   name: ${name}
@@ -39,7 +40,7 @@ esphome:
       # here, after the uart has been set up (harmless if the board already
       # has an external pull-up).
       - lambda: |-
-          gpio_num_t rx = (gpio_num_t) ${lin_rx_pin_num};
+          gpio_num_t rx = (gpio_num_t) ${lin_rx_gpio};
           gpio_pulldown_dis(rx);
           gpio_pullup_en(rx);
           ESP_LOGI("lin", "Internal pull-up enabled on LIN RX GPIO%d", (int) rx);
@@ -186,10 +187,10 @@ uart:
   # pin 5 = GND). Truma LIN runs at 9600 baud, 8N2 - do not change.
   # GPIO12 = TXD1, GPIO13 = RXD1 (not crossed - ESP TX -> TJA1021 TXD)
   - id: lin_uart
-    tx_pin: ${lin_tx_pin}
+    tx_pin: GPIO${lin_tx_gpio}
     # Pull-up for the open-drain TJA1021 RXD is set in esphome: on_boot
     # (the havanti uart has no pin pull-up option).
-    rx_pin: ${lin_rx_pin}
+    rx_pin: GPIO${lin_rx_gpio}
     baud_rate: 9600
     data_bits: 8
     parity: NONE
@@ -835,8 +836,9 @@ binary_sensor:
     id: lin_rx_idle_high
     entity_category: diagnostic
     lambda: |-
-      return gpio_get_level((gpio_num_t) ${lin_rx_pin_num}) == 1;
-
+      return gpio_get_level((gpio_num_t) ${lin_rx_gpio}) == 1;
+    filters:
+      - delayed_off: 1s
 
 # =============================================================================
 # Switches - MCP23017 Controlled Relays
@@ -857,6 +859,7 @@ switch:
   # If the board ever turns out to have an inverting transistor in front of
   # SLP_N (i.e. LIN only works with this switch OFF), set `inverted: true`
   # on the pin instead of changing restore_mode.
+  # turns itself back ON 60 s after being switched OFF
   - platform: gpio
     id: lin_slp
     name: "LIN Transceiver Active"
@@ -864,6 +867,9 @@ switch:
     entity_category: config
     pin: GPIO27
     restore_mode: ALWAYS_ON
+    on_turn_off:
+      - delay: 60s
+      - switch.turn_on: lin_slp
 
   # ---------------------------------------------------------------------------
   # Internal MCP23017 Pin Outputs (coil drivers via ULN2803A)
