@@ -451,7 +451,7 @@ of Fabian Schmidt's `esphome-truma_inetbox`. It also replaces ESPHome's
 | `external_components` | `havanti/esphome-truma@v1.0.32` | `truma_inetbox` + patched `uart` |
 | `uart` | `lin_uart` GPIO12/13, 9600 baud, 8N2 | LIN via TJA1021T (U14) |
 | `output` | `lin_ms` (GPIO25), `lin_wake` (GPIO26) | Slave mode, no wake pulse (both OFF at boot) |
-| `switch` | `lin_slp` "LIN Transceiver Active" (GPIO27) | TJA1021 SLP_N, `ALWAYS_ON` |
+| `switch` | `lin_slp` "LIN Transceiver Active" (GPIO27) | TJA1021 SLP_N, `ALWAYS_ON`, turns itself back ON 60 s after being switched OFF |
 | `truma_inetbox` | `id: truma`, `lin_checksum: VERSION_2` | iNet Box emulation |
 | `sensor` | room/water temp, error code, operating status, energy mix status | Readbacks |
 | `binary_sensor` | CP Plus connected, has error, room/water heater active | Status |
@@ -476,7 +476,7 @@ For a diesel Combi (D6E) change the energy mix select to
 | Symptom | Cause / fix |
 |---------|-------------|
 | No LIN frames at all in the DEBUG log | TJA1021 still asleep: `LIN Transceiver Active` must be ON (SLP_N HIGH). If LIN only works with it OFF, the board inverts the signal - set `inverted: true` on GPIO27. Also check 12V on the transceiver and the RJ12 pinout. |
-| `LIN RX Idle High` permanently OFF / no frames at all | TJA1021 RXD is open-drain and needs a pull-up. The firmware enables the ESP32 internal pull-up on GPIO13 in `on_boot` (the havanti uart ignores pin pull-up options). If it stays OFF: check `LIN Transceiver Active`, 12V (VBAT) at the TJA1021, and try swapping `lin_tx_pin`/`lin_rx_pin` in `substitutions`. |
+| `LIN RX Idle High` permanently OFF / no frames at all | TJA1021 RXD is open-drain and needs a pull-up. The firmware enables the ESP32 internal pull-up on GPIO13 in `on_boot` (the havanti uart ignores pin pull-up options). If it stays OFF: check `LIN Transceiver Active`, 12V (VBAT) at the TJA1021, and try swapping `lin_tx_gpio`/`lin_rx_gpio` in `substitutions`. |
 | Frames arrive, CP Plus never connects | `lin_checksum` must be `VERSION_2`; re-run CP Plus init (PR SET). |
 | `uart marked FAILED` / `Cannot update Truma` | Use havanti >= v1.0.23; the real error is only in the **serial** (USB) boot log. |
 
