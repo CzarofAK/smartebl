@@ -17,13 +17,14 @@ esphome:
     board_build.flash_mode: dio
     board_build.f_flash: 80000000L
   on_boot:
-    priority: -100  # Run early, before other components initialize
+    priority: -100  # Runs late, after all components have been set up
     then:
-      # LIN control pins (Truma) - optional, only needed if the LIN/Truma
-      # block below is uncommented.
-      # - output.turn_off: lin_ms # OFF=Slave, ON=Master
-      # - output.turn_off: lin_wake # OFF=Normal, ON=Wakeup
-      # - output.turn_off: lin_slp # OFF=Normal, ON=Sleep
+      # LIN control pins (Truma, TJA1021T U14). The SLP_N pin (GPIO27) is NOT
+      # handled here - it is the switch "LIN Transceiver Active" further below
+      # (restore_mode: ALWAYS_ON), because the TJA1021 only enters Normal mode
+      # on a rising edge on SLP_N and must be set very early in setup().
+      - output.turn_off: lin_ms # OFF=Slave (Truma CP Plus is the LIN master)
+      - output.turn_off: lin_wake # OFF=Normal, ON=Wakeup pulse
       - output.turn_on: can_term # Terminating resistor enabled after boot if ON
       - output.turn_off: can_stb # Transceiver active after boot if OFF
 
@@ -62,13 +63,17 @@ external_components:
       path: components
     components: [ads7830]
 
-  # Truma iNetbox LIN integration - optional, only needed if the LIN/Truma
-  # block is uncommented (uart: lin_uart, output: lin_ms/lin_wake/lin_slp,
-  # truma_inetbox:, and the Truma sensor/binary_sensor/climate/number/select
-  # entries further below).
-  # - source: github://havanti/esphome-truma@v1.0.24
-  #   components: [truma_inetbox, uart]
-  #   refresh: never
+  # Truma iNetbox LIN integration (Smart EBL acts as an "iNet Box" slave on
+  # the Truma CP Plus LIN bus). havanti fork of Fabian-Schmidt's
+  # esphome-truma_inetbox. It ships its own `uart` component (needed for LIN
+  # BREAK detection) which replaces ESPHome's built-in uart for ALL uarts in
+  # this config (display_uart too - that is fine and intended).
+  # v1.0.32 is required for ESPHome >= 2026.9.0 (v1.0.27 fixed the uart/
+  # action build errors with 2026.9, v1.0.23 fixed "uart marked FAILED").
+  # See: https://github.com/havanti/esphome-truma
+  - source: github://havanti/esphome-truma@v1.0.32
+    components: [truma_inetbox, uart]
+    refresh: never
 
 # =============================================================================
 # I2C Bus Configuration
@@ -100,20 +105,22 @@ mcp23017:
 
 output:
 
-  # LIN control pins (TJA1021T U14) - optional, only needed for the LIN/Truma
-  # block below.
-  # - platform: gpio
-  #   id: lin_ms
-  #   pin: GPIO25
-  #   # OFF=Slave, ON=Master
-  # - platform: gpio
-  #   id: lin_wake
-  #   pin: GPIO26
-  #   # OFF=Normal, ON=Wakeup
-  # - platform: gpio
-  #   id: lin_slp
-  #   pin: GPIO27
-  #   # OFF=Normal, ON=Sleep
+  # LIN control pins (TJA1021T U14)
+  # GPIO25 = LIN_MS: switches the 1k master pull-up on the LIN line.
+  #   Must be OFF (Slave): the Truma CP Plus is the LIN master and already
+  #   has its own pull-up.
+  - platform: gpio
+    id: lin_ms
+    pin: GPIO25
+    # OFF=Slave, ON=Master
+  # GPIO26 = LIN_WAKE: drives the TJA1021 WAKE_N input (active LOW, internal
+  #   pull-up to VBAT, so it is driven via a transistor on the board).
+  #   Only needed to wake the bus from sleep - keep OFF.
+  - platform: gpio
+    id: lin_wake
+    pin: GPIO26
+    # OFF=Normal, ON=Wakeup
+  # GPIO27 = LIN_SLP -> see switch "LIN Transceiver Active" (id: lin_slp)
 
     # CAN Bus Control Pins (via SN65HVD234 U3)
   - platform: gpio
@@ -157,16 +164,16 @@ canbus:
 # =============================================================================
 
 uart:
-  # LIN Bus for Truma CP Plus (via TJA1021T U14) - optional, only needed for
-  # the LIN/Truma block below.
-  # GPIO12 = TXD1, GPIO13 = RXD1
-  # - id: lin_uart
-  #   tx_pin: GPIO12
-  #   rx_pin: GPIO13
-  #   baud_rate: 9600
-  #   data_bits: 8
-  #   parity: NONE
-  #   stop_bits: 2
+  # LIN Bus for Truma CP Plus (via TJA1021T U14, RJ12 J10: pin 3 = LIN,
+  # pin 5 = GND). Truma LIN runs at 9600 baud, 8N2 - do not change.
+  # GPIO12 = TXD1, GPIO13 = RXD1 (not crossed - ESP TX -> TJA1021 TXD)
+  - id: lin_uart
+    tx_pin: GPIO12
+    rx_pin: GPIO13
+    baud_rate: 9600
+    data_bits: 8
+    parity: NONE
+    stop_bits: 2
 
   # Display (via TRS3221 RS-232 transceiver U18, RJ45 to display)
   # GPIO18 = TXD2, GPIO19 = RXD2
@@ -177,17 +184,40 @@ uart:
     baud_rate: 115200
 
 # =============================================================================
-# Truma iNetbox Integration (optional - LIN bus)
+# Truma iNetbox Integration (LIN bus)
 # =============================================================================
-# The whole LIN/Truma feature is optional and disabled by default. To enable
-# it, uncomment this block together with: the external_components entry
-# above (github://havanti/esphome-truma@v1.0.24), uart: lin_uart, output:
-# lin_ms/lin_wake/lin_slp, their on_boot actions, and the Truma
-# sensor/binary_sensor/climate/number/select entries further below.
+# Pieces that belong to the LIN/Truma feature (all enabled):
+#   - external_components: havanti/esphome-truma (truma_inetbox + uart)
+#   - uart: lin_uart (GPIO12/13, 9600 8N2)
+#   - output: lin_ms, lin_wake (+ on_boot turn_off)
+#   - switch: lin_slp "LIN Transceiver Active" (TJA1021 SLP_N, GPIO27)
+#   - sensor / binary_sensor / climate / number / select: platform truma_inetbox
+#
+# First commissioning: the CP Plus only assigns LIN slave slots during its
+# initialisation. After flashing, run the CP Plus initialisation once
+# (CP Plus menu: Service -> RESET -> "PR SET") with the Smart EBL connected,
+# otherwise "Truma CP Plus Connected" stays OFF even if the wiring is right.
+#
+# Troubleshooting (see also havanti TROUBLESHOOTING.md):
+#   - Check the SERIAL boot log (USB) - uart setup errors only show there.
+#   - No LIN frames in the DEBUG log at all -> transceiver asleep (see
+#     lin_slp), wiring, or missing 12V on the TJA1021 (VBAT).
+#   - Frames arrive but CP Plus never connects -> lin_checksum / slot (PR SET).
 
-# truma_inetbox:
-#   id: truma
-#   uart_id: lin_uart
+truma_inetbox:
+  id: truma
+  uart_id: lin_uart
+  # LIN 2.x enhanced checksum. VERSION_1 makes the CP Plus drop every frame.
+  lin_checksum: VERSION_2
+  # Optional: sync the CP Plus clock from Home Assistant. Needs the time
+  # component id from .basics.yaml plus an on_time_sync action there:
+  #   time:
+  #     - platform: homeassistant
+  #       id: homeassistant_time
+  #       on_time_sync:
+  #         then:
+  #           - truma_inetbox.clock.set:
+  # time_id: homeassistant_time
 
 # =============================================================================
 # Sensors - Fuse Voltage Monitoring
@@ -564,26 +594,47 @@ sensor:
       - multiply: 6.62
 
   # ---------------------------------------------------------------------------
-  # Truma Sensors (optional - requires the LIN/Truma block enabled above)
+  # Truma Sensors (LIN bus, truma_inetbox)
+  # NOTE: never give a sensor the same name as a number/select - identical
+  # names collide in the API and crash the HA connection. Readbacks of
+  # settable values therefore get the suffix "Status".
   # ---------------------------------------------------------------------------
 
-  # - platform: truma_inetbox
-  #   truma_inetbox_id: truma
-  #   type: CURRENT_ROOM_TEMPERATURE
-  #   name: "Truma Room Temperature"
-  #   id: truma_room_temp
+  # Current room temperature measured by the CP Plus
+  - platform: truma_inetbox
+    truma_inetbox_id: truma
+    type: CURRENT_ROOM_TEMPERATURE
+    name: "Truma Room Temperature"
+    id: truma_room_temp
 
-  # - platform: truma_inetbox
-  #   truma_inetbox_id: truma
-  #   type: CURRENT_WATER_TEMPERATURE
-  #   name: "Truma Water Temperature"
-  #   id: truma_water_temp
+  # Current boiler (water) temperature
+  - platform: truma_inetbox
+    truma_inetbox_id: truma
+    type: CURRENT_WATER_TEMPERATURE
+    name: "Truma Water Temperature"
+    id: truma_water_temp
 
-  # - platform: truma_inetbox
-  #   truma_inetbox_id: truma
-  #   type: HEATER_ERROR_CODE
-  #   name: "Truma Error Code"
-  #   id: truma_error_code
+  # Truma error code (0 = no error, see Truma manual for codes)
+  - platform: truma_inetbox
+    truma_inetbox_id: truma
+    type: HEATER_ERROR_CODE
+    name: "Truma Error Code"
+    id: truma_error_code
+
+  # Operating status: 0 off, 1 warning, 4 start-up/run-down,
+  # >=5 in operation (exact meaning above 5 depends on the heater model)
+  - platform: truma_inetbox
+    truma_inetbox_id: truma
+    type: OPERATING_STATUS
+    name: "Truma Operating Status"
+    id: truma_operating_status
+
+  # Readback of the energy mix actually set in the CP Plus
+  - platform: truma_inetbox
+    truma_inetbox_id: truma
+    type: ENERGY_MIX
+    name: "Truma Energy Mix Status"
+    id: truma_energy_mix_status
 
   # ---------------------------------------------------------------------------
   # System Diagnostics
@@ -719,20 +770,36 @@ binary_sensor:
     device_class: plug
 
   # ---------------------------------------------------------------------------
-  # Truma Binary Sensors (optional - requires the LIN/Truma block enabled above)
+  # Truma Binary Sensors (LIN bus, truma_inetbox)
   # ---------------------------------------------------------------------------
 
-  # - platform: truma_inetbox
-  #   truma_inetbox_id: truma
-  #   type: CP_PLUS_CONNECTED
-  #   name: "Truma CP Plus Connected"
-  #   id: truma_connected
+  # ON as soon as the CP Plus polls the Smart EBL as iNet Box slave.
+  # This is THE indicator whether the LIN link works at all.
+  - platform: truma_inetbox
+    truma_inetbox_id: truma
+    type: CP_PLUS_CONNECTED
+    name: "Truma CP Plus Connected"
+    id: truma_connected
 
-  # - platform: truma_inetbox
-  #   truma_inetbox_id: truma
-  #   type: HEATER_HAS_ERROR
-  #   name: "Truma Has Error"
-  #   id: truma_has_error
+  - platform: truma_inetbox
+    truma_inetbox_id: truma
+    type: HEATER_HAS_ERROR
+    name: "Truma Has Error"
+    id: truma_has_error
+
+  # Room heating / boiler switched on in the CP Plus (setpoint active, not
+  # necessarily burner running - use Operating Status for that)
+  - platform: truma_inetbox
+    truma_inetbox_id: truma
+    type: HEATER_ROOM
+    name: "Truma Room Heater Active"
+    id: truma_room_heater_active
+
+  - platform: truma_inetbox
+    truma_inetbox_id: truma
+    type: HEATER_WATER
+    name: "Truma Water Heater Active"
+    id: truma_water_heater_active
 
 
 # =============================================================================
@@ -740,6 +807,28 @@ binary_sensor:
 # =============================================================================
 
 switch:
+  # ---------------------------------------------------------------------------
+  # LIN Transceiver Sleep Control (TJA1021T U14, pin SLP_N <- GPIO27 LIN_SLP)
+  # ---------------------------------------------------------------------------
+  # The TJA1021 powers up in "Power-on/Sleep" mode with transmitter AND
+  # receiver disabled. It only enters Normal mode on a RISING edge on SLP_N
+  # (active LOW, internal pull-down). Before this fix LIN_SLP was driven LOW
+  # ("OFF=Normal") -> the transceiver never left sleep -> no LIN traffic at
+  # all, CP Plus never saw the Smart EBL.
+  # ALWAYS_ON: GPIO27 goes HIGH during setup -> rising edge -> Normal mode.
+  # Exposed as a config switch so it can be toggled from HA for diagnosis:
+  # ON = transceiver active (Normal), OFF = sleep.
+  # If the board ever turns out to have an inverting transistor in front of
+  # SLP_N (i.e. LIN only works with this switch OFF), set `inverted: true`
+  # on the pin instead of changing restore_mode.
+  - platform: gpio
+    id: lin_slp
+    name: "LIN Transceiver Active"
+    icon: mdi:lan-connect
+    entity_category: config
+    pin: GPIO27
+    restore_mode: ALWAYS_ON
+
   # ---------------------------------------------------------------------------
   # Internal MCP23017 Pin Outputs (coil drivers via ULN2803A)
   # Bistable relays need a pulse to change state
@@ -960,49 +1049,64 @@ switch:
       - switch.turn_on: relay_aux_off_coil
 
 # =============================================================================
-# Climate - Truma Heater (optional - requires the LIN/Truma block enabled above)
+# Climate - Truma Heater (LIN bus, truma_inetbox)
 # =============================================================================
 
-# climate:
-#   - platform: truma_inetbox
-#     truma_inetbox_id: truma
-#     type: ROOM
-#     name: "Truma Heater"
-#     id: truma_heater
+climate:
+  # Room heating: HVAC mode heat/off + target room temperature (5-30 °C)
+  # -> climate.smart_ebl_truma_heater (used by lovelace-smartebl.yaml)
+  - platform: truma_inetbox
+    truma_inetbox_id: truma
+    type: ROOM
+    name: "Truma Heater"
+    id: truma_heater
+
+  # Boiler: off / eco (40 °C) / hot (60 °C) / boost (-> climate.smart_ebl_truma_water_heater)
+  - platform: truma_inetbox
+    truma_inetbox_id: truma
+    type: WATER
+    name: "Truma Water Heater"
+    id: truma_water_heater
 
 # =============================================================================
-# Number Controls - Truma Settings (optional - requires the LIN/Truma block enabled above)
+# Number Controls - Truma Settings (LIN bus, truma_inetbox)
 # =============================================================================
 
-# number:
-#   - platform: truma_inetbox
-#     truma_inetbox_id: truma
-#     type: TARGET_ROOM_TEMPERATURE
-#     name: "Truma Target Room Temp"
-#     id: truma_target_room_temp
+number:
+  # Target room temperature, 0 = room heating off
+  - platform: truma_inetbox
+    truma_inetbox_id: truma
+    type: TARGET_ROOM_TEMPERATURE
+    name: "Truma Target Room Temp"
+    id: truma_target_room_temp
 
-#   - platform: truma_inetbox
-#     truma_inetbox_id: truma
-#     type: TARGET_WATER_TEMPERATURE
-#     name: "Truma Target Water Temp"
-#     id: truma_target_water_temp
+  # Target water temperature, 0 = boiler off (40 eco / 60 hot / 80 boost)
+  - platform: truma_inetbox
+    truma_inetbox_id: truma
+    type: TARGET_WATER_TEMPERATURE
+    name: "Truma Target Water Temp"
+    id: truma_target_water_temp
 
 # =============================================================================
-# Select Controls - Truma Modes (optional - requires the LIN/Truma block enabled above)
+# Select Controls - Truma Modes (LIN bus, truma_inetbox)
 # =============================================================================
 
-# select:
-#   - platform: truma_inetbox
-#     truma_inetbox_id: truma
-#     type: HEATER_FAN_MODE_COMBI
-#     name: "Truma Fan Mode"
-#     id: truma_fan_mode
+select:
+  # Fan mode for Combi heaters: Off / Eco / High / Boost (Vent 1-10 not
+  # selectable here, the VENT_MODE sensor in havanti >=1.0.32 shows it)
+  - platform: truma_inetbox
+    truma_inetbox_id: truma
+    type: HEATER_FAN_MODE_COMBI
+    name: "Truma Fan Mode"
+    id: truma_fan_mode
 
-#   - platform: truma_inetbox
-#     truma_inetbox_id: truma
-#     type: HEATER_ENERGY_MIX_GAS
-#     name: "Truma Energy Mix"
-#     id: truma_energy_mix
+  # Energy mix for gas Combi (Combi 4/6, Combi E): Gas / Mix 1 / Mix 2 /
+  # Electric 1 / Electric 2 (Mix/Electric only with Combi E). For a diesel Combi (D6E) use HEATER_ENERGY_MIX_DIESEL instead.
+  - platform: truma_inetbox
+    truma_inetbox_id: truma
+    type: HEATER_ENERGY_MIX_GAS
+    name: "Truma Energy Mix"
+    id: truma_energy_mix
 
 # =============================================================================
 # Display Connection - choose ONE of the two options below
