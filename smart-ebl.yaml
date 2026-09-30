@@ -439,10 +439,15 @@ sensor:
     name: "Tank 1 Level"
     id: tank1_level
     unit_of_measurement: "%"
+    device_class: ""  # Komponente setzt voltage als Default -> passt nicht zu %
     accuracy_decimals: 0
     update_interval: 10s
     filters:
-      - multiply: 0.392  # Scale 0-255 to 0-100%
+      # ads7830 liefert Volt (0-3.3 V), nicht Rohwert 0-255 -> linear auf 0-100 %
+      - multiply: 30.303
+      - clamp:
+          min_value: 0
+          max_value: 100
 
   - platform: ads7830
     ads7830_id: adc_inputs
@@ -450,10 +455,14 @@ sensor:
     name: "Tank 2 Level"
     id: tank2_level
     unit_of_measurement: "%"
+    device_class: ""  # Komponente setzt voltage als Default -> passt nicht zu %
     accuracy_decimals: 0
     update_interval: 10s
     filters:
-      - multiply: 0.392
+      - multiply: 30.303
+      - clamp:
+          min_value: 0
+          max_value: 100
 
   - platform: ads7830
     ads7830_id: adc_inputs
@@ -461,10 +470,14 @@ sensor:
     name: "Tank 3 Level"
     id: tank3_level
     unit_of_measurement: "%"
+    device_class: ""  # Komponente setzt voltage als Default -> passt nicht zu %
     accuracy_decimals: 0
     update_interval: 10s
     filters:
-      - multiply: 0.392
+      - multiply: 30.303
+      - clamp:
+          min_value: 0
+          max_value: 100
 
   - platform: ads7830
     ads7830_id: adc_inputs

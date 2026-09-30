@@ -335,6 +335,12 @@ Bistable (latching) relays require a pulse to toggle state. Controlled via MCP23
 
 ## Session Notes
 
+### 2026-09-30
+- **Tank levels fix:** `ads7830` publishes volts (0-3.3 V), not raw 0-255. Old filter
+  `multiply: 0.392` gave max ~1.3 % (showed 0 %). Now `multiply: 30.303` (100/3.3) + clamp 0-100.
+- Tank sensors: `device_class: ""`, because the component defaults to `voltage` (HA warning
+  "unit % not valid for device class voltage"). Linear scaling only, no per-tank calibration yet.
+
 ### 2026-09-26
 - **LIN/Truma FIX:** TJA1021 SLP_N (GPIO27) was driven LOW ("OFF=Normal"). SLP_N is
   active LOW and the TJA1021 only enters Normal mode on a rising edge -> transceiver
