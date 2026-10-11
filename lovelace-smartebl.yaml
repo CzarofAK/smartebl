@@ -599,9 +599,11 @@ views:
           - entity: select.smart_ebl_truma_fan_mode
             name: Fan Mode
             icon: mdi:fan
-          - entity: select.smart_ebl_truma_energy_mix
-            name: Energy Mix
-            icon: mdi:gas-burner
+          # Energy mix removed - Combi 4 is gas only (select disabled in smart-ebl.yaml)
+          - entity: switch.smart_ebl_truma_activate_room_heater
+            name: Room Heating On/Off
+          - entity: switch.smart_ebl_truma_activate_water_heater
+            name: Boiler On/Off
 
       # -------------------------------------------------------------------------
       # Truma Status

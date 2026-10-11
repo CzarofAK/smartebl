@@ -79,7 +79,8 @@
 | Outputs | 8 | Light, Light L, 12V, AUX, Pump, Contour Light output voltage |
 | Tanks | 3 | Tank 1, Tank 2, Tank 3 levels |
 | Inputs | 5 | Duocontrol, shore power, D+ signal, F10 ABS, 3.3V bus |
-| Truma | 5 | Room/water temp, error code, operating status, energy mix status |
+| Truma | 4 | Room/water temp, error code, operating status (energy mix status disabled: Combi 4 gas only) |
+| Truma (text) | 2 | Truma Status, Truma Heating Mode (readable, for the displays) |
 | System | 3 | WiFi signal, ESP32 temp, uptime |
 
 ### Binary Sensors (~20)
@@ -94,10 +95,10 @@
 
 | Type | Entities | Description |
 |------|----------|-------------|
-| Switches | 11 | LIN Transceiver Active (config), Water Pump, Light Group, 12V Group, AUX Group, EisEx, D+2 Relay, Fridge, Tank 1-3 DC control |
+| Switches | 13 | Truma Activate Room/Water Heater, LIN Transceiver Active (config), Water Pump, Light Group, 12V Group, AUX Group, EisEx, D+2 Relay, Fridge, Tank 1-3 DC control |
 | Climate | 2 | Truma room heater, Truma water heater (boiler) |
 | Number | 2 | Truma target room/water temp |
-| Select | 2 | Truma energy mix, fan mode |
+| Select | 1 | Truma fan mode (energy mix disabled: Combi 4 gas only) |
 
 ---
 
@@ -452,15 +453,17 @@ of Fabian Schmidt's `esphome-truma_inetbox`. It also replaces ESPHome's
 | `uart` | `lin_uart` GPIO12/13, 9600 baud, 8N2 | LIN via TJA1021T (U14) |
 | `output` | `lin_ms` (GPIO25), `lin_wake` (GPIO26) | Slave mode, no wake pulse (both OFF at boot) |
 | `switch` | `lin_slp` "LIN Transceiver Active" (GPIO27) | TJA1021 SLP_N, `ALWAYS_ON`, turns itself back ON 60 s after being switched OFF |
-| `truma_inetbox` | `id: truma`, `lin_checksum: VERSION_2` | iNet Box emulation |
-| `sensor` | room/water temp, error code, operating status, energy mix status | Readbacks |
+| `truma_inetbox` | `id: truma`, `lin_checksum: VERSION_2`, `time_id: homeassistant_time` | iNet Box emulation, CP Plus clock synced on time sync + hourly |
+| `sensor` | room/water temp, error code, operating status, heating mode (internal) | Readbacks |
+| `text_sensor` | Truma Status, Truma Heating Mode | Readable status for M5Dial / 10.1" display |
+| `switch` | Truma Activate Room/Water Heater | On/off gates for the panels (defaults `truma_room_on_temp` / `truma_water_on_temp`) |
 | `binary_sensor` | CP Plus connected, has error, room/water heater active | Status |
 | `climate` | `Truma Heater` (ROOM), `Truma Water Heater` (WATER) | Control |
 | `number` | target room / water temp | Control |
-| `select` | fan mode (Combi), energy mix (gas) | Control |
+| `select` | fan mode (Combi); energy mix commented out (Combi 4 = gas only) | Control |
 
-For a diesel Combi (D6E) change the energy mix select to
-`HEATER_ENERGY_MIX_DIESEL`.
+For a Combi E re-enable the energy mix select/sensor; for a diesel Combi (D6E)
+use `HEATER_ENERGY_MIX_DIESEL`.
 
 ### Commissioning
 

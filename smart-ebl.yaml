@@ -16,6 +16,10 @@ substitutions:
   # lambdas, so there is a single place to change them.
   lin_tx_gpio: "12"
   lin_rx_gpio: "13"
+  # Truma default targets when switched ON via "Truma Activate Room/Water
+  # Heater" (M5Dial / 10.1" display). Water: 40 eco / 60 hot / 80 boost.
+  truma_room_on_temp: "18"
+  truma_water_on_temp: "60"
 
 esphome:
   name: ${name}
@@ -230,15 +234,18 @@ truma_inetbox:
   uart_id: lin_uart
   # LIN 2.x enhanced checksum. VERSION_1 makes the CP Plus drop every frame.
   lin_checksum: VERSION_2
-  # Optional: sync the CP Plus clock from Home Assistant. Needs the time
-  # component id from .basics.yaml plus an on_time_sync action there:
-  #   time:
-  #     - platform: homeassistant
-  #       id: homeassistant_time
-  #       on_time_sync:
-  #         then:
-  #           - truma_inetbox.clock.set:
-  # time_id: homeassistant_time
+  # CP Plus clock from Home Assistant (FR-71). homeassistant_time comes
+  # from the shared .basics.yaml; the time: block below only EXTENDS that
+  # entry by id (package merge) with on_time_sync - nothing device-specific
+  # goes into .basics.yaml. Re-synced hourly in interval: as well, so the
+  # CP Plus clock corrects itself after a power loss.
+  time_id: homeassistant_time
+
+time:
+  - id: !extend homeassistant_time
+    on_time_sync:
+      then:
+        - truma_inetbox.clock.set:
 
 # =============================================================================
 # Sensors - Fuse Voltage Monitoring
@@ -662,13 +669,45 @@ sensor:
     type: OPERATING_STATUS
     name: "Truma Operating Status"
     id: truma_operating_status
+    on_value:
+      - lambda: |-
+          int v = std::isnan(x) ? -1 : (int) x;
+          const char *t;
+          if (v < 0) t = "unbekannt";
+          else if (v == 0) t = "Aus";
+          else if (v == 1) t = "Warnung";
+          else if (v == 4) t = "Start/Nachlauf";
+          else if (v >= 5) t = "In Betrieb";
+          else t = "Status ?";
+          id(truma_status_text).publish_state(t);
 
-  # Readback of the energy mix actually set in the CP Plus
+  # Heating mode (fan level) of the Combi: 0 off, 1 eco, 10 high, 11 boost.
+  # Internal - HA gets the readable text_sensor "Truma Heating Mode" below
+  # (displays show it in their status footer).
   - platform: truma_inetbox
     truma_inetbox_id: truma
-    type: ENERGY_MIX
-    name: "Truma Energy Mix Status"
-    id: truma_energy_mix_status
+    type: HEATING_MODE
+    id: truma_heating_mode
+    internal: true
+    on_value:
+      - lambda: |-
+          int v = std::isnan(x) ? -1 : (int) x;
+          const char *t;
+          if (v < 0) t = "unbekannt";
+          else if (v == 0) t = "Aus";
+          else if (v == 1) t = "Eco";
+          else if (v == 10) t = "High";
+          else if (v == 11) t = "Boost";
+          else t = "Modus ?";
+          id(truma_heating_mode_text).publish_state(t);
+
+  # Readback of the energy mix - disabled: the FRAM's Combi 4 is gas only
+  # (no "E" element), the value never changes. Re-enable for a Combi E.
+  # - platform: truma_inetbox
+  #   truma_inetbox_id: truma
+  #   type: ENERGY_MIX
+  #   name: "Truma Energy Mix Status"
+  #   id: truma_energy_mix_status
 
   # ---------------------------------------------------------------------------
   # System Diagnostics
@@ -681,6 +720,23 @@ sensor:
   - platform: uptime
     name: "Uptime"
     update_interval: 60s
+
+# =============================================================================
+# Text Sensors - Truma readable status (consumers: 10.1" display footer)
+# =============================================================================
+
+text_sensor:
+  # Published from truma_operating_status / truma_heating_mode on_value.
+  # -> sensor.smart_ebl_truma_status / sensor.smart_ebl_truma_heating_mode
+  - platform: template
+    name: "Truma Status"
+    id: truma_status_text
+    icon: mdi:fire
+
+  - platform: template
+    name: "Truma Heating Mode"
+    id: truma_heating_mode_text
+    icon: mdi:fan
 
 # =============================================================================
 # Binary Sensors
@@ -1103,6 +1159,41 @@ switch:
     turn_off_action:
       - switch.turn_on: relay_aux_off_coil
 
+  # ---------------------------------------------------------------------------
+  # Truma on/off gates (FR-71) - replace the womolin controller's
+  # "Activate Room/Water Heater" switches that M5Dial and the 10.1" display
+  # toggle (switch.toggle). State = HEATER_ROOM / HEATER_WATER readback
+  # (setpoint active in the CP Plus). ON starts with the default target
+  # from substitutions; the panels then adjust it via the number entities.
+  # -> switch.smart_ebl_truma_activate_room_heater / _water_heater
+  # ---------------------------------------------------------------------------
+  - platform: template
+    name: "Truma Activate Room Heater"
+    id: truma_activate_room
+    icon: mdi:radiator
+    lambda: |-
+      return id(truma_room_heater_active).state;
+    turn_on_action:
+      - truma_inetbox.heater.set_target_room_temperature:
+          temperature: ${truma_room_on_temp}
+          heating_mode: ECO
+    turn_off_action:
+      - truma_inetbox.heater.set_target_room_temperature:
+          temperature: 0
+
+  - platform: template
+    name: "Truma Activate Water Heater"
+    id: truma_activate_water
+    icon: mdi:water-boiler
+    lambda: |-
+      return id(truma_water_heater_active).state;
+    turn_on_action:
+      - truma_inetbox.heater.set_target_water_temperature:
+          temperature: ${truma_water_on_temp}
+    turn_off_action:
+      - truma_inetbox.heater.set_target_water_temperature:
+          temperature: 0
+
 # =============================================================================
 # Climate - Truma Heater (LIN bus, truma_inetbox)
 # =============================================================================
@@ -1155,13 +1246,14 @@ select:
     name: "Truma Fan Mode"
     id: truma_fan_mode
 
-  # Energy mix for gas Combi (Combi 4/6, Combi E): Gas / Mix 1 / Mix 2 /
-  # Electric 1 / Electric 2 (Mix/Electric only with Combi E). For a diesel Combi (D6E) use HEATER_ENERGY_MIX_DIESEL instead.
-  - platform: truma_inetbox
-    truma_inetbox_id: truma
-    type: HEATER_ENERGY_MIX_GAS
-    name: "Truma Energy Mix"
-    id: truma_energy_mix
+  # Energy mix - disabled: the FRAM's Combi 4 is gas only (no "E").
+  # For a Combi E: Gas / Mix 1 / Mix 2 / Electric 1 / Electric 2; for a
+  # diesel Combi (D6E) use HEATER_ENERGY_MIX_DIESEL instead.
+  # - platform: truma_inetbox
+  #   truma_inetbox_id: truma
+  #   type: HEATER_ENERGY_MIX_GAS
+  #   name: "Truma Energy Mix"
+  #   id: truma_energy_mix
 
 # =============================================================================
 # Display Connection - choose ONE of the two options below
@@ -1232,10 +1324,10 @@ select:
 # Scope of THIS change: groups 1-4 (fuses, tanks, electrical, switches)
 # round-robin broadcast, plus the group-4 command listener - everything
 # the display's Mainscreen/Electric pages need. Groups 5 (Truma) and 6
-# (system) are not sent yet: the display's Climate page reads Truma via
-# the womolin_controller HA/MQTT integration instead of this link (see
-# that repo's docs/pages.md - "same entities m5dial_fram/page_climate.yaml
-# already uses"), so there's no consumer for group 5 over this wire yet.
+# (system) are not sent yet: the display's Truma page reads the Truma
+# entities of THIS device via Home Assistant (smart_ebl_truma_*, FR-71 -
+# formerly the womolin controller), not over this link, so there's no
+# consumer for group 5 over this wire yet.
 # Add it here later (same shape as groups 1-4 below) if a link-based
 # Truma path is ever built on the display side - group 5's keys already
 # exist as protocol.md rows, just unsent.
@@ -1255,6 +1347,16 @@ globals:
     initial_value: '""'
 
 interval:
+  # CP Plus clock re-sync (see truma_inetbox: time_id). Only once HA time
+  # is valid - clock.set needs a valid time source.
+  - interval: 1h
+    then:
+      - if:
+          condition:
+            lambda: return id(homeassistant_time).now().is_valid();
+          then:
+            - truma_inetbox.clock.set:
+
   # Round-robins groups 1-4 every 200ms (protocol.md §4: "smartebl
   # broadcasts one group every ~200ms, cycling 1->6->1->..." - this
   # implementation cycles 1->4 until group 5/6 are added).
