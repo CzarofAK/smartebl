@@ -1367,7 +1367,7 @@ interval:
       - lambda: |-
           uint8_t g = id(link_group_cycle);
           std::string payload;
-          char buf[24];
+          char buf[48];  // was 24: "leisure_battery_voltage=12.59;" is 30 chars - snprintf truncated it and broke the whole T3 frame
           if (g == 1) {
             payload = "T1;";
             float volts[16] = {
