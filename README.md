@@ -456,7 +456,7 @@ of Fabian Schmidt's `esphome-truma_inetbox`. It also replaces ESPHome's
 | `truma_inetbox` | `id: truma`, `lin_checksum: VERSION_2`, `time_id: homeassistant_time` | iNet Box emulation, CP Plus clock synced on time sync + hourly |
 | `sensor` | room/water temp, error code, operating status, heating mode (internal) | Readbacks |
 | `text_sensor` | Truma Status, Truma Heating Mode | Readable status for M5Dial / 10.1" display |
-| `switch` | Truma Activate Room/Water Heater | On/off gates for the panels (defaults `truma_room_on_temp` / `truma_water_on_temp`) |
+| `switch` | Truma Activate Room/Water Heater | On/off gates for the panels (defaults `truma_room_on_temp` 22 °C + `truma_room_on_mode` BOOST / `truma_water_on_temp` 60 °C) |
 | `binary_sensor` | CP Plus connected, has error, room/water heater active | Status |
 | `climate` | `Truma Heater` (ROOM), `Truma Water Heater` (WATER) | Control |
 | `number` | target room / water temp | Control |

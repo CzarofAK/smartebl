@@ -338,7 +338,7 @@ Bistable (latching) relays require a pulse to toggle state. Controlled via MCP23
 ### 2026-10-11
 - **Truma consumers (FR-71):** M5Dial and 10.1" display switch from the womolin
   controller to this device. Added template switches "Truma Activate Room/Water
-  Heater" (state = HEATER_ROOM/WATER, ON = default targets from substitutions),
+  Heater" (state = HEATER_ROOM/WATER, ON = default targets from substitutions: room 22 °C BOOST, water 60 °C),
   text sensors "Truma Status" / "Truma Heating Mode" (readable, published from the
   numeric sensors), HEATING_MODE sensor (internal).
 - Combi 4 = gas only: ENERGY_MIX sensor and HEATER_ENERGY_MIX_GAS select commented out.

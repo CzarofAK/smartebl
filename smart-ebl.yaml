@@ -18,7 +18,9 @@ substitutions:
   lin_rx_gpio: "13"
   # Truma default targets when switched ON via "Truma Activate Room/Water
   # Heater" (M5Dial / 10.1" display). Water: 40 eco / 60 hot / 80 boost.
-  truma_room_on_temp: "18"
+  truma_room_on_temp: "22"
+  # Fan level when switched ON: ECO / HIGH / BOOST (Combi)
+  truma_room_on_mode: BOOST
   truma_water_on_temp: "60"
 
 esphome:
@@ -1176,7 +1178,7 @@ switch:
     turn_on_action:
       - truma_inetbox.heater.set_target_room_temperature:
           temperature: ${truma_room_on_temp}
-          heating_mode: ECO
+          heating_mode: ${truma_room_on_mode}
     turn_off_action:
       - truma_inetbox.heater.set_target_room_temperature:
           temperature: 0
