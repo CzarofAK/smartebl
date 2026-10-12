@@ -335,7 +335,7 @@ views:
         square: true
         cards:
           - type: custom:mushroom-entity-card
-            entity: binary_sensor.smart_ebl_fuse_f1_ok
+            entity: binary_sensor.smart_ebl_fuse_f1
             name: F1
             icon: mdi:fuse
             icon_type: icon
@@ -344,7 +344,7 @@ views:
             secondary_info: none
             icon_color: yellow
           - type: custom:mushroom-entity-card
-            entity: binary_sensor.smart_ebl_fuse_f2_ok
+            entity: binary_sensor.smart_ebl_fuse_f2
             name: F2
             icon: mdi:fuse
             icon_type: icon
@@ -353,7 +353,7 @@ views:
             secondary_info: none
             icon_color: yellow
           - type: custom:mushroom-entity-card
-            entity: binary_sensor.smart_ebl_fuse_f3_ok
+            entity: binary_sensor.smart_ebl_fuse_f3
             name: F3
             icon: mdi:fuse
             icon_type: icon
@@ -362,7 +362,7 @@ views:
             secondary_info: none
             icon_color: yellow
           - type: custom:mushroom-entity-card
-            entity: binary_sensor.smart_ebl_fuse_f4_ok
+            entity: binary_sensor.smart_ebl_fuse_f4
             name: F4
             icon: mdi:fuse
             icon_type: icon
@@ -371,7 +371,7 @@ views:
             secondary_info: none
             icon_color: yellow
           - type: custom:mushroom-entity-card
-            entity: binary_sensor.smart_ebl_fuse_f5_ok
+            entity: binary_sensor.smart_ebl_fuse_f5
             name: F5
             icon: mdi:fuse
             icon_type: icon
@@ -380,7 +380,7 @@ views:
             secondary_info: none
             icon_color: yellow
           - type: custom:mushroom-entity-card
-            entity: binary_sensor.smart_ebl_fuse_f6_ok
+            entity: binary_sensor.smart_ebl_fuse_f6
             name: F6
             icon: mdi:fuse
             icon_type: icon
@@ -389,7 +389,7 @@ views:
             secondary_info: none
             icon_color: yellow
           - type: custom:mushroom-entity-card
-            entity: binary_sensor.smart_ebl_fuse_f7_ok
+            entity: binary_sensor.smart_ebl_fuse_f7
             name: F7
             icon: mdi:fuse
             icon_type: icon
@@ -398,7 +398,7 @@ views:
             secondary_info: none
             icon_color: yellow
           - type: custom:mushroom-entity-card
-            entity: binary_sensor.smart_ebl_fuse_f8_ok
+            entity: binary_sensor.smart_ebl_fuse_f8
             name: F8
             icon: mdi:fuse
             icon_type: icon
@@ -407,7 +407,7 @@ views:
             secondary_info: none
             icon_color: yellow
           - type: custom:mushroom-entity-card
-            entity: binary_sensor.smart_ebl_fuse_f9_ok
+            entity: binary_sensor.smart_ebl_fuse_f9
             name: F9
             icon: mdi:fuse
             icon_type: icon
@@ -416,7 +416,7 @@ views:
             secondary_info: none
             icon_color: yellow
           - type: custom:mushroom-entity-card
-            entity: binary_sensor.smart_ebl_fuse_f10_ok
+            entity: binary_sensor.smart_ebl_fuse_f10
             name: F10
             icon: mdi:fuse
             icon_type: icon
@@ -425,7 +425,7 @@ views:
             secondary_info: none
             icon_color: yellow
           - type: custom:mushroom-entity-card
-            entity: binary_sensor.smart_ebl_fuse_f11_ok
+            entity: binary_sensor.smart_ebl_fuse_f11
             name: F11
             icon: mdi:fuse
             icon_type: icon
@@ -434,7 +434,7 @@ views:
             secondary_info: none
             icon_color: yellow
           - type: custom:mushroom-entity-card
-            entity: binary_sensor.smart_ebl_fuse_f12_ok
+            entity: binary_sensor.smart_ebl_fuse_f12
             name: F12
             icon: mdi:fuse
             icon_type: icon
@@ -443,7 +443,7 @@ views:
             secondary_info: none
             icon_color: yellow
           - type: custom:mushroom-entity-card
-            entity: binary_sensor.smart_ebl_fuse_f13_ok
+            entity: binary_sensor.smart_ebl_fuse_f13
             name: F13
             icon: mdi:fuse
             icon_type: icon
@@ -452,7 +452,7 @@ views:
             secondary_info: none
             icon_color: yellow
           - type: custom:mushroom-entity-card
-            entity: binary_sensor.smart_ebl_fuse_f14_ok
+            entity: binary_sensor.smart_ebl_fuse_f14
             name: F14
             icon: mdi:fuse
             icon_type: icon
@@ -461,7 +461,7 @@ views:
             secondary_info: none
             icon_color: yellow
           - type: custom:mushroom-entity-card
-            entity: binary_sensor.smart_ebl_fuse_f15_ok
+            entity: binary_sensor.smart_ebl_fuse_f15
             name: F15
             icon: mdi:fuse
             icon_type: icon
@@ -470,7 +470,7 @@ views:
             secondary_info: none
             icon_color: yellow
           - type: custom:mushroom-entity-card
-            entity: binary_sensor.smart_ebl_fuse_f16_ok
+            entity: binary_sensor.smart_ebl_fuse_f16
             name: F16
             icon: mdi:fuse
             icon_type: icon
