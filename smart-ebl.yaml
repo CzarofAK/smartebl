@@ -22,11 +22,10 @@ substitutions:
   # Fan level when switched ON: ECO / HIGH / BOOST (Combi)
   truma_room_on_mode: BOOST
   truma_water_on_temp: "60"
-  # Heating fan: HA entity of the Shelly that switches it. PLACEHOLDER -
-  # the Shelly does not exist yet (2026-10-12); set the real entity_id
-  # once it is installed. Needs "Allow the device to perform Home
-  # Assistant actions" enabled for the Smart EBL in HA.
-  heating_fan_entity: switch.shelly_heizungsfan
+  # Heating fan: HA entity of the Shelly 1 that switches it (FR-24).
+  # Needs "Allow the device to perform Home Assistant actions" enabled
+  # for the Smart EBL in HA.
+  heating_fan_entity: switch.shelly_fan_heater_bed_fan_heater_bed
 
 esphome:
   name: ${name}

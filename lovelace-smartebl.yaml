@@ -677,11 +677,10 @@ views:
             name: Fridge Control
             icon: mdi:fridge
           # Heating fan: mode on the Smart EBL, switched by a Shelly
-          # (placeholder entity, Shelly not installed yet)
           - entity: select.smart_ebl_heating_fan_mode
             name: Heizungsfan Modus
             icon: mdi:fan-auto
-          - entity: switch.shelly_heizungsfan
+          - entity: switch.shelly_fan_heater_bed_fan_heater_bed
             name: Heizungsfan (Shelly)
             icon: mdi:fan
 

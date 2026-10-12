@@ -347,8 +347,8 @@ Bistable (latching) relays require a pulse to toggle state. Controlled via MCP23
   Now: select "Heating Fan Mode" Auto/Ein/Aus (restore_value) + script
   `heating_fan_update` compute the demand (Auto = Truma Vent Level > 0 and CP Plus
   connected), publish binary_sensor "Heating Fan Demand" and switch the Shelly via
-  `homeassistant.action` (entity in substitution `heating_fan_entity`, PLACEHOLDER
-  `switch.shelly_heizungsfan` - Shelly not installed yet). The Shelly state is read
+  `homeassistant.action` (entity in substitution `heating_fan_entity`:
+  `switch.shelly_fan_heater_bed_fan_heater_bed`). The Shelly state is read
   back (internal homeassistant binary_sensor) and re-synced if it differs; the select
   is the master. Requires "Allow the device to perform Home Assistant actions" in HA.
   Open: whether Vent Level stays > 0 during the Truma's afterrun.
