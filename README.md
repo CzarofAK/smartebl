@@ -101,10 +101,10 @@
 
 | Type | Entities | Description |
 |------|----------|-------------|
-| Switches | 12 | Truma Activate Room/Water Heater, LIN Transceiver Active (config), Water Pump, Light Group, 12V Group, AUX Group, EisEx, D+2 Relay, Tank 1-3 DC control (fridge relay K6 is internal: heating fan, see Select) |
+| Switches | 13 | Truma Activate Room/Water Heater, LIN Transceiver Active (config), Water Pump, Light Group, 12V Group, AUX Group, EisEx, D+2 Relay, Fridge, Tank 1-3 DC control |
 | Climate | 2 | Truma room heater, Truma water heater (boiler) |
 | Number | 2 | Truma target room/water temp |
-| Select | 2 | Truma fan mode (energy mix disabled: Combi 4 gas only); Heating Fan Mode Auto/Ein/Aus (fan on JP7 via K6, Auto mirrors the Truma fan) |
+| Select | 2 | Truma fan mode (energy mix disabled: Combi 4 gas only); Heating Fan Mode Auto/Ein/Aus (fan switched by a Shelly via HA action, Auto mirrors the Truma fan; binary_sensor Heating Fan Demand) |
 
 ---
 

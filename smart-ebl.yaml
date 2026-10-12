@@ -22,6 +22,11 @@ substitutions:
   # Fan level when switched ON: ECO / HIGH / BOOST (Combi)
   truma_room_on_mode: BOOST
   truma_water_on_temp: "60"
+  # Heating fan: HA entity of the Shelly that switches it. PLACEHOLDER -
+  # the Shelly does not exist yet (2026-10-12); set the real entity_id
+  # once it is installed. Needs "Allow the device to perform Home
+  # Assistant actions" enabled for the Smart EBL in HA.
+  heating_fan_entity: switch.shelly_heizungsfan
 
 esphome:
   name: ${name}
@@ -52,8 +57,9 @@ esphome:
           ESP_LOGI("lin", "Internal pull-up enabled on LIN RX GPIO%d", (int) rx);
       - output.turn_on: can_term # Terminating resistor enabled after boot if ON
       - output.turn_off: can_stb # Transceiver active after boot if OFF
-      # Heating fan (JP7): apply the restored mode (Ein/Aus take effect
-      # immediately, Auto waits for the first Truma values)
+      # Heating fan (Shelly): publish the demand for the restored mode. The
+      # command itself only reaches the Shelly once HA is connected - the
+      # Shelly state arriving from HA re-runs this script and syncs it.
       - script.execute: heating_fan_update
 
 esp32:
@@ -945,15 +951,26 @@ binary_sensor:
     filters:
       - delayed_off: 1s
 
-  # Heating fan (JP7 via K6) - actual commanded output state, whatever
-  # the mode (Auto/Ein/Aus). Read by the 10.1" display's Truma page.
-  # -> binary_sensor.smart_ebl_heating_fan_running
+  # Heating fan - switched by a Shelly (entity: substitution
+  # heating_fan_entity), NOT by a Smart EBL output. See script
+  # heating_fan_update.
+  # Demand = what the fan logic wants right now (mode + Truma fan).
+  # -> binary_sensor.smart_ebl_heating_fan_demand
   - platform: template
-    name: "Heating Fan Running"
-    id: heating_fan_running
-    icon: mdi:fan
-    lambda: |-
-      return id(fridge_control).state;
+    name: "Heating Fan Demand"
+    id: heating_fan_demand
+    icon: mdi:fan-alert
+
+  # Actual Shelly state, read back from HA. Internal: HA already has the
+  # Shelly's own switch entity, no need for a duplicate. Used to re-send
+  # the command when the Shelly does not match the demand (e.g. Shelly
+  # was offline, or switched by hand in HA).
+  - platform: homeassistant
+    id: heating_fan_shelly_state
+    entity_id: ${heating_fan_entity}
+    internal: true
+    on_state:
+      - script.execute: heating_fan_update
 
 # =============================================================================
 # Switches - MCP23017 Controlled Relays
@@ -1119,22 +1136,13 @@ switch:
       mode: OUTPUT
 
   # Fridge control (GPA2) -> relay K6 -> JP7 "Abso" (+BATT via F10).
-  # FRAM: no fridge on this relay - JP7 drives the HEATING FAN instead
-  # (2026-10-12). Internal: only the heating fan logic below
-  # (script heating_fan_update) may switch it, otherwise HA could flip
-  # the output behind the logic's back. HA sees the result as
-  # binary_sensor "Heating Fan Running" and controls it via
-  # select "Heating Fan Mode".
-  # HARDWARE NOTE: per information/I2C overview.md, F-CTRL is "parallel
-  # to D+" (AES recognition) - K6 may also pull in from vehicle D+,
-  # i.e. the fan could run while the engine runs, regardless of this
-  # logic. Check "F10 ABS Status" with the engine running.
+  # NOTE (confirmed in the FRAM, 2026-10-12): K6 also pulls in from vehicle
+  # D+ (F-CTRL is "parallel to D+") - JP7 is live whenever the engine runs,
+  # regardless of this switch. Not usable as a freely switched output.
   - platform: gpio
     id: fridge_control
-    name: "Heating Fan Output"
-    icon: mdi:fan
-    internal: true
-    restore_mode: ALWAYS_OFF
+    name: "Fridge Control"
+    icon: mdi:fridge
     pin:
       mcp23xxx: io_expander
       number: 2  # GPA2 = F-CTRL
@@ -1296,12 +1304,14 @@ number:
 # =============================================================================
 
 select:
-  # Heating fan on JP7 (fridge relay K6, see switch fridge_control):
+  # Heating fan (switched by the Shelly in substitution heating_fan_entity):
   #   Auto = mirrors the Truma fan 1:1 as on/off (Truma Vent Level > 0,
   #          i.e. Vent 1-10 or heater fan Eco/High; OFF while the CP Plus
   #          is not connected)
   #   Ein  = manual override ON,  Aus = manual override OFF
-  # Survives reboots (restore_value). -> select.smart_ebl_heating_fan_mode
+  # This select is the master - switching the Shelly by hand in HA gets
+  # corrected back to it. Survives reboots (restore_value).
+  # -> select.smart_ebl_heating_fan_mode
   - platform: template
     name: "Heating Fan Mode"
     id: heating_fan_mode
@@ -1411,10 +1421,14 @@ select:
 # exist as protocol.md rows, just unsent.
 
 script:
-  # Heating fan (JP7) - sets fridge_control from select heating_fan_mode
-  # and the Truma fan state. Called on every change of the mode, the
-  # Truma Vent Level, the CP Plus connection, and once after boot.
-  # Only writes on an actual change (no needless I2C traffic).
+  # Heating fan - computes the demand from select heating_fan_mode and the
+  # Truma fan state, publishes it as "Heating Fan Demand" and switches the
+  # Shelly (${heating_fan_entity}) via a Home Assistant action. Called on
+  # every change of the mode, the Truma Vent Level, the CP Plus connection,
+  # the Shelly's own state, and once after boot.
+  # Sends only when needed: if the Shelly state is known, when it differs
+  # from the demand; if unknown (Shelly offline / not installed yet), when
+  # the demand changed since the last command.
   - id: heating_fan_update
     mode: queued
     then:
@@ -1432,13 +1446,54 @@ script:
             float v = id(truma_vent_level).state;
             want = cp_ok && !std::isnan(v) && v > 0.5f;
           }
-          if (want != id(fridge_control).state) {
-            static const char *const names[] = {"Auto", "Ein", "Aus"};
-            ESP_LOGI("heating_fan", "Mode %s -> fan %s", names[mode < 3 ? mode : 0], want ? "ON" : "OFF");
-            if (want) id(fridge_control).turn_on(); else id(fridge_control).turn_off();
+          id(heating_fan_demand).publish_state(want);
+          bool send;
+          if (id(heating_fan_shelly_state).has_state()) {
+            send = id(heating_fan_shelly_state).state != want;
+          } else {
+            send = id(heating_fan_last_sent) != (want ? 1 : 0);
           }
+          id(heating_fan_send) = send;
+          if (send) {
+            static const char *const names[] = {"Auto", "Ein", "Aus"};
+            ESP_LOGI("heating_fan", "Mode %s -> Shelly %s", names[mode < 3 ? mode : 0], want ? "ON" : "OFF");
+          }
+      - if:
+          condition:
+            lambda: return id(heating_fan_send);
+          then:
+            - if:
+                condition:
+                  binary_sensor.is_on: heating_fan_demand
+                then:
+                  - homeassistant.action:
+                      action: switch.turn_on
+                      data:
+                        entity_id: ${heating_fan_entity}
+                  - globals.set:
+                      id: heating_fan_last_sent
+                      value: "1"
+                else:
+                  - homeassistant.action:
+                      action: switch.turn_off
+                      data:
+                        entity_id: ${heating_fan_entity}
+                  - globals.set:
+                      id: heating_fan_last_sent
+                      value: "0"
 
 globals:
+  # Heating fan: last command sent to the Shelly (-1 none yet, 0 off, 1 on)
+  # and the "send now" flag from heating_fan_update's lambda.
+  - id: heating_fan_last_sent
+    type: int
+    restore_value: false
+    initial_value: "-1"
+  - id: heating_fan_send
+    type: bool
+    restore_value: false
+    initial_value: "false"
+
   - id: link_group_cycle
     type: uint8_t
     restore_value: false
