@@ -673,9 +673,13 @@ views:
           - entity: switch.smart_ebl_d_2_relay
             name: D+2 Output
             icon: mdi:car-battery
-          - entity: switch.smart_ebl_fridge_control
-            name: Fridge Control
-            icon: mdi:fridge
+          # Fridge relay K6 / JP7 now drives the heating fan (FRAM)
+          - entity: select.smart_ebl_heating_fan_mode
+            name: Heizungsfan Modus
+            icon: mdi:fan-auto
+          - entity: binary_sensor.smart_ebl_heating_fan_running
+            name: Heizungsfan läuft
+            icon: mdi:fan
 
       # -------------------------------------------------------------------------
       # Tank DC Mode Controls

@@ -52,6 +52,9 @@ esphome:
           ESP_LOGI("lin", "Internal pull-up enabled on LIN RX GPIO%d", (int) rx);
       - output.turn_on: can_term # Terminating resistor enabled after boot if ON
       - output.turn_off: can_stb # Transceiver active after boot if OFF
+      # Heating fan (JP7): apply the restored mode (Ein/Aus take effect
+      # immediately, Auto waits for the first Truma values)
+      - script.execute: heating_fan_update
 
 esp32:
   board: esp-wrover-kit
@@ -726,6 +729,9 @@ sensor:
     type: VENT_MODE
     name: "Truma Vent Level"
     id: truma_vent_level
+    # Drives the heating fan on JP7 in AUTO (select "Heating Fan Mode")
+    on_value:
+      - script.execute: heating_fan_update
 
   # Readback of the energy mix - disabled: the FRAM's Combi 4 is gas only
   # (no "E" element), the value never changes. Re-enable for a Combi E.
@@ -896,6 +902,10 @@ binary_sensor:
     type: CP_PLUS_CONNECTED
     name: "Truma CP Plus Connected"
     id: truma_connected
+    # Heating fan AUTO falls back to OFF while the CP Plus is gone
+    # (VENT_MODE would otherwise keep its last value)
+    on_state:
+      - script.execute: heating_fan_update
 
   - platform: truma_inetbox
     truma_inetbox_id: truma
@@ -934,6 +944,16 @@ binary_sensor:
       return gpio_get_level((gpio_num_t) ${lin_rx_gpio}) == 1;
     filters:
       - delayed_off: 1s
+
+  # Heating fan (JP7 via K6) - actual commanded output state, whatever
+  # the mode (Auto/Ein/Aus). Read by the 10.1" display's Truma page.
+  # -> binary_sensor.smart_ebl_heating_fan_running
+  - platform: template
+    name: "Heating Fan Running"
+    id: heating_fan_running
+    icon: mdi:fan
+    lambda: |-
+      return id(fridge_control).state;
 
 # =============================================================================
 # Switches - MCP23017 Controlled Relays
@@ -1098,11 +1118,23 @@ switch:
       number: 1  # GPA1 = D+2
       mode: OUTPUT
 
-  # Fridge control (GPA2)
+  # Fridge control (GPA2) -> relay K6 -> JP7 "Abso" (+BATT via F10).
+  # FRAM: no fridge on this relay - JP7 drives the HEATING FAN instead
+  # (2026-10-12). Internal: only the heating fan logic below
+  # (script heating_fan_update) may switch it, otherwise HA could flip
+  # the output behind the logic's back. HA sees the result as
+  # binary_sensor "Heating Fan Running" and controls it via
+  # select "Heating Fan Mode".
+  # HARDWARE NOTE: per information/I2C overview.md, F-CTRL is "parallel
+  # to D+" (AES recognition) - K6 may also pull in from vehicle D+,
+  # i.e. the fan could run while the engine runs, regardless of this
+  # logic. Check "F10 ABS Status" with the engine running.
   - platform: gpio
     id: fridge_control
-    name: "Fridge Control"
-    icon: mdi:fridge
+    name: "Heating Fan Output"
+    icon: mdi:fan
+    internal: true
+    restore_mode: ALWAYS_OFF
     pin:
       mcp23xxx: io_expander
       number: 2  # GPA2 = F-CTRL
@@ -1264,6 +1296,26 @@ number:
 # =============================================================================
 
 select:
+  # Heating fan on JP7 (fridge relay K6, see switch fridge_control):
+  #   Auto = mirrors the Truma fan 1:1 as on/off (Truma Vent Level > 0,
+  #          i.e. Vent 1-10 or heater fan Eco/High; OFF while the CP Plus
+  #          is not connected)
+  #   Ein  = manual override ON,  Aus = manual override OFF
+  # Survives reboots (restore_value). -> select.smart_ebl_heating_fan_mode
+  - platform: template
+    name: "Heating Fan Mode"
+    id: heating_fan_mode
+    icon: mdi:fan-auto
+    options:
+      - "Auto"
+      - "Ein"
+      - "Aus"
+    initial_option: "Auto"
+    optimistic: true
+    restore_value: true
+    on_value:
+      - script.execute: heating_fan_update
+
   # Fan mode for Combi heaters: Off / Eco / High / Boost (Vent 1-10 not
   # selectable here, the VENT_MODE sensor in havanti >=1.0.32 shows it)
   - platform: truma_inetbox
@@ -1357,6 +1409,34 @@ select:
 # Add it here later (same shape as groups 1-4 below) if a link-based
 # Truma path is ever built on the display side - group 5's keys already
 # exist as protocol.md rows, just unsent.
+
+script:
+  # Heating fan (JP7) - sets fridge_control from select heating_fan_mode
+  # and the Truma fan state. Called on every change of the mode, the
+  # Truma Vent Level, the CP Plus connection, and once after boot.
+  # Only writes on an actual change (no needless I2C traffic).
+  - id: heating_fan_update
+    mode: queued
+    then:
+      - lambda: |-
+          // Index into the select's options: 0 Auto, 1 Ein, 2 Aus
+          auto idx = id(heating_fan_mode).active_index();
+          size_t mode = idx.has_value() ? *idx : 0;
+          bool want;
+          if (mode == 1) {
+            want = true;
+          } else if (mode == 2) {
+            want = false;
+          } else {  // Auto: mirror the Truma fan
+            bool cp_ok = id(truma_connected).has_state() && id(truma_connected).state;
+            float v = id(truma_vent_level).state;
+            want = cp_ok && !std::isnan(v) && v > 0.5f;
+          }
+          if (want != id(fridge_control).state) {
+            static const char *const names[] = {"Auto", "Ein", "Aus"};
+            ESP_LOGI("heating_fan", "Mode %s -> fan %s", names[mode < 3 ? mode : 0], want ? "ON" : "OFF");
+            if (want) id(fridge_control).turn_on(); else id(fridge_control).turn_off();
+          }
 
 globals:
   - id: link_group_cycle

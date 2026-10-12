@@ -341,6 +341,13 @@ Bistable (latching) relays require a pulse to toggle state. Controlled via MCP23
   path in the component, nor in Fabian-Schmidt's original or inetbox.py).
 - LIN sniffing logger block added commented out below `packages:` (VERY_VERBOSE only
   for tag `truma_inetbox.LinBusListener`). Never use `observer_mode` here.
+- **Heating fan on JP7 (fridge relay K6, GPA2 `fridge_control`):** the FRAM has no
+  fridge on K6, so it now drives the heating fan (replaces a Shelly). Select
+  "Heating Fan Mode" Auto/Ein/Aus (restore_value), script `heating_fan_update`:
+  Auto = ON while Truma Vent Level > 0 and CP Plus connected (1:1 mirror, on/off
+  only). `fridge_control` is internal; HA sees binary_sensor "Heating Fan Running".
+  Open: K6 may also pull in from vehicle D+ (F-CTRL "parallel to D+") - verify with
+  engine running; unknown whether Vent Level stays > 0 during the Truma's afterrun.
 
 ### 2026-10-11
 - **Truma consumers (FR-71):** M5Dial and 10.1" display switch from the womolin
