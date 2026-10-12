@@ -9,6 +9,12 @@
 
 **Hardware Design:** Ingenieurburo Jan Morawek, Munich
 
+> [!WARNING]
+> **Safety & liability / Sicherheit & Haftung** – Private hobby project, provided "as is" and used **at your own risk**.
+> This firmware switches 12 V high-current loads (up to 80 A), controls a **gas heater (Truma)** via LIN bus and is connected to the **vehicle electrics (D+, starter battery)**.
+> Wrong configuration can cause fire, CO poisoning, flat batteries or damage to the vehicle and appliances. Do not rely on it for safety-critical functions.
+> See [DISCLAIMER.md](DISCLAIMER.md) (EN/DE).
+
 ---
 
 ## Features
@@ -642,7 +648,11 @@ Contributions are welcome! Please feel free to submit issues and pull requests.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+The firmware, configuration and documentation in this repository are licensed under the MIT License – see [LICENSE](LICENSE).
+The Smart EBL **hardware design** is by Ingenieurbüro Jan Morawek and is **not** covered by this license.
+External components (e.g. havanti/esphome-truma) keep their own licenses.
+
+Use at your own risk – see [DISCLAIMER.md](DISCLAIMER.md).
 
 ---
 
