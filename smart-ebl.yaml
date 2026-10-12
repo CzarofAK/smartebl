@@ -77,6 +77,20 @@ esp32:
 packages:
   basics: !include .basics.yaml
 
+# LIN bus sniffing (Truma CP Plus) - uncomment ONLY for measuring, it is very
+# chatty. Overrides the logger from .basics.yaml for this device only.
+# VERBOSE logs every LIN frame as "PID xx <bytes> - MASTER/SLAVE";
+# VERY_VERBOSE adds the heater PIDs 0x20/0x21/0x22 (fan/vent level is in
+# PID 0x20 byte 5) and the transport frames 0x3C/0x3D. Only the LIN tag is
+# raised, everything else stays at DEBUG. Do NOT set observer_mode in
+# truma_inetbox - the Smart EBL IS the iNet box, observer mode would stop
+# all control.
+# logger:
+#   level: VERY_VERBOSE          # compiled-in maximum
+#   initial_level: DEBUG         # runtime default for all other tags
+#   logs:
+#     truma_inetbox.LinBusListener: VERY_VERBOSE
+
 # =============================================================================
 # External Components
 # =============================================================================
@@ -702,6 +716,16 @@ sensor:
           else if (v == 11) t = "Boost";
           else t = "Modus ?";
           id(truma_heating_mode_text).publish_state(t);
+
+  # Fan level reported by the CP Plus (havanti >= 1.0.32, issue #25): high
+  # nibble of LIN PID 0x20 byte 5. 0 off, 1-10 pure ventilation (Vent),
+  # 11 heater fan Eco, 13 heater fan High. Verified on a Combi 4. READ ONLY -
+  # Vent 1-10 cannot be set via truma_inetbox (only Off/Eco/High/Boost).
+  - platform: truma_inetbox
+    truma_inetbox_id: truma
+    type: VENT_MODE
+    name: "Truma Vent Level"
+    id: truma_vent_level
 
   # Readback of the energy mix - disabled: the FRAM's Combi 4 is gas only
   # (no "E" element), the value never changes. Re-enable for a Combi E.

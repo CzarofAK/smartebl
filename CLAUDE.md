@@ -335,6 +335,13 @@ Bistable (latching) relays require a pulse to toggle state. Controlled via MCP23
 
 ## Session Notes
 
+### 2026-10-12
+- Added `VENT_MODE` sensor "Truma Vent Level" (havanti >= 1.0.32): 0 off, 1-10 Vent,
+  11 Eco, 13 High. Read only - Vent 1-10 cannot be set via truma_inetbox (no write
+  path in the component, nor in Fabian-Schmidt's original or inetbox.py).
+- LIN sniffing logger block added commented out below `packages:` (VERY_VERBOSE only
+  for tag `truma_inetbox.LinBusListener`). Never use `observer_mode` here.
+
 ### 2026-10-11
 - **Truma consumers (FR-71):** M5Dial and 10.1" display switch from the womolin
   controller to this device. Added template switches "Truma Activate Room/Water
