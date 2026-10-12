@@ -335,6 +335,11 @@ Bistable (latching) relays require a pulse to toggle state. Controlled via MCP23
 
 ## Session Notes
 
+### 2026-10-12 (FR-109)
+- Fuse sensors renamed "Fuse F1 OK" -> "Fuse F1" (id `fuse_fN_fault`), `device_class: problem`,
+  logic inverted (on = voltage <= 1 V). HA shows "OK"/"Problem". New entity IDs
+  `binary_sensor.smart_ebl_fuse_fN`; the old `..._fuse_fN_ok` entities must be removed in HA after flashing.
+
 ### 2026-10-12
 - Added `VENT_MODE` sensor "Truma Vent Level" (havanti >= 1.0.32): 0 off, 1-10 Vent,
   11 Eco, 13 High. Read only - Vent 1-10 cannot be set via truma_inetbox (no write

@@ -781,104 +781,153 @@ text_sensor:
 
 binary_sensor:
   # ---------------------------------------------------------------------------
-  # Fuse Status (OK when voltage > 1V)
+  # Fuse Status: device_class problem -> HA shows "OK" (off) / "Problem" (on).
+  # Problem when the fuse output voltage is <= 1 V; unknown until the first ADC reading.
   # ---------------------------------------------------------------------------
 
   - platform: template
-    name: "Fuse F1 OK"
-    id: fuse_f1_ok
-    lambda: return id(fuse_f1_voltage).state > 1.0;
-    device_class: power
+    name: "Fuse F1"
+    id: fuse_f1_fault
+    lambda: |-
+      float v = id(fuse_f1_voltage).state;
+      if (std::isnan(v)) return {};
+      return v <= 1.0;
+    device_class: problem
 
   - platform: template
-    name: "Fuse F2 OK"
-    id: fuse_f2_ok
-    lambda: return id(fuse_f2_voltage).state > 1.0;
-    device_class: power
+    name: "Fuse F2"
+    id: fuse_f2_fault
+    lambda: |-
+      float v = id(fuse_f2_voltage).state;
+      if (std::isnan(v)) return {};
+      return v <= 1.0;
+    device_class: problem
 
   - platform: template
-    name: "Fuse F3 OK"
-    id: fuse_f3_ok
-    lambda: return id(fuse_f3_voltage).state > 1.0;
-    device_class: power
+    name: "Fuse F3"
+    id: fuse_f3_fault
+    lambda: |-
+      float v = id(fuse_f3_voltage).state;
+      if (std::isnan(v)) return {};
+      return v <= 1.0;
+    device_class: problem
 
   - platform: template
-    name: "Fuse F4 OK"
-    id: fuse_f4_ok
-    lambda: return id(fuse_f4_voltage).state > 1.0;
-    device_class: power
+    name: "Fuse F4"
+    id: fuse_f4_fault
+    lambda: |-
+      float v = id(fuse_f4_voltage).state;
+      if (std::isnan(v)) return {};
+      return v <= 1.0;
+    device_class: problem
 
   - platform: template
-    name: "Fuse F5 OK"
-    id: fuse_f5_ok
-    lambda: return id(fuse_f5_voltage).state > 1.0;
-    device_class: power
+    name: "Fuse F5"
+    id: fuse_f5_fault
+    lambda: |-
+      float v = id(fuse_f5_voltage).state;
+      if (std::isnan(v)) return {};
+      return v <= 1.0;
+    device_class: problem
 
   - platform: template
-    name: "Fuse F6 OK"
-    id: fuse_f6_ok
-    lambda: return id(fuse_f6_voltage).state > 1.0;
-    device_class: power
+    name: "Fuse F6"
+    id: fuse_f6_fault
+    lambda: |-
+      float v = id(fuse_f6_voltage).state;
+      if (std::isnan(v)) return {};
+      return v <= 1.0;
+    device_class: problem
 
   - platform: template
-    name: "Fuse F7 OK"
-    id: fuse_f7_ok
-    lambda: return id(fuse_f7_voltage).state > 1.0;
-    device_class: power
+    name: "Fuse F7"
+    id: fuse_f7_fault
+    lambda: |-
+      float v = id(fuse_f7_voltage).state;
+      if (std::isnan(v)) return {};
+      return v <= 1.0;
+    device_class: problem
 
   - platform: template
-    name: "Fuse F8 OK"
-    id: fuse_f8_ok
-    lambda: return id(fuse_f8_voltage).state > 1.0;
-    device_class: power
+    name: "Fuse F8"
+    id: fuse_f8_fault
+    lambda: |-
+      float v = id(fuse_f8_voltage).state;
+      if (std::isnan(v)) return {};
+      return v <= 1.0;
+    device_class: problem
 
   - platform: template
-    name: "Fuse F9 OK"
-    id: fuse_f9_ok
-    lambda: return id(fuse_f9_voltage).state > 1.0;
-    device_class: power
+    name: "Fuse F9"
+    id: fuse_f9_fault
+    lambda: |-
+      float v = id(fuse_f9_voltage).state;
+      if (std::isnan(v)) return {};
+      return v <= 1.0;
+    device_class: problem
 
   - platform: template
-    name: "Fuse F10 OK"
-    id: fuse_f10_ok
-    lambda: return id(fuse_f10_voltage).state > 1.0;
-    device_class: power
+    name: "Fuse F10"
+    id: fuse_f10_fault
+    lambda: |-
+      float v = id(fuse_f10_voltage).state;
+      if (std::isnan(v)) return {};
+      return v <= 1.0;
+    device_class: problem
 
   - platform: template
-    name: "Fuse F11 OK"
-    id: fuse_f11_ok
-    lambda: return id(fuse_f11_voltage).state > 1.0;
-    device_class: power
+    name: "Fuse F11"
+    id: fuse_f11_fault
+    lambda: |-
+      float v = id(fuse_f11_voltage).state;
+      if (std::isnan(v)) return {};
+      return v <= 1.0;
+    device_class: problem
 
   - platform: template
-    name: "Fuse F12 OK"
-    id: fuse_f12_ok
-    lambda: return id(fuse_f12_voltage).state > 1.0;
-    device_class: power
+    name: "Fuse F12"
+    id: fuse_f12_fault
+    lambda: |-
+      float v = id(fuse_f12_voltage).state;
+      if (std::isnan(v)) return {};
+      return v <= 1.0;
+    device_class: problem
 
   - platform: template
-    name: "Fuse F13 OK"
-    id: fuse_f13_ok
-    lambda: return id(fuse_f13_voltage).state > 1.0;
-    device_class: power
+    name: "Fuse F13"
+    id: fuse_f13_fault
+    lambda: |-
+      float v = id(fuse_f13_voltage).state;
+      if (std::isnan(v)) return {};
+      return v <= 1.0;
+    device_class: problem
 
   - platform: template
-    name: "Fuse F14 OK"
-    id: fuse_f14_ok
-    lambda: return id(fuse_f14_voltage).state > 1.0;
-    device_class: power
+    name: "Fuse F14"
+    id: fuse_f14_fault
+    lambda: |-
+      float v = id(fuse_f14_voltage).state;
+      if (std::isnan(v)) return {};
+      return v <= 1.0;
+    device_class: problem
 
   - platform: template
-    name: "Fuse F15 OK"
-    id: fuse_f15_ok
-    lambda: return id(fuse_f15_voltage).state > 1.0;
-    device_class: power
+    name: "Fuse F15"
+    id: fuse_f15_fault
+    lambda: |-
+      float v = id(fuse_f15_voltage).state;
+      if (std::isnan(v)) return {};
+      return v <= 1.0;
+    device_class: problem
 
   - platform: template
-    name: "Fuse F16 OK"
-    id: fuse_f16_ok
-    lambda: return id(fuse_f16_voltage).state > 1.0;
-    device_class: power
+    name: "Fuse F16"
+    id: fuse_f16_fault
+    lambda: |-
+      float v = id(fuse_f16_voltage).state;
+      if (std::isnan(v)) return {};
+      return v <= 1.0;
+    device_class: problem
 
   # ---------------------------------------------------------------------------
   # Input Detection
