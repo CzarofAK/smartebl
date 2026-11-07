@@ -680,7 +680,7 @@ views:
           - entity: select.smart_ebl_heating_fan_mode
             name: Heizungsfan Modus
             icon: mdi:fan-auto
-          - entity: switch.shelly_fan_heater_bed_fan_heater_bed
+          - entity: switch.fan_heater_bed
             name: Heizungsfan (Shelly)
             icon: mdi:fan
 

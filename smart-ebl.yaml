@@ -25,7 +25,7 @@ substitutions:
   # Heating fan: HA entity of the Shelly 1 that switches it (FR-24).
   # Needs "Allow the device to perform Home Assistant actions" enabled
   # for the Smart EBL in HA.
-  heating_fan_entity: switch.shelly_fan_heater_bed_fan_heater_bed
+  heating_fan_entity: switch.fan_heater_bed
 
 esphome:
   name: ${name}
