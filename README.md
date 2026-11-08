@@ -586,6 +586,7 @@ title: Smart EBL
 entities:
   - entity: sensor.smart_ebl_leisure_battery_voltage
   - entity: sensor.smart_ebl_starter_battery_voltage
+  - entity: binary_sensor.smart_ebl_shore_power_connected
   - entity: switch.smart_ebl_12v_group
   - entity: switch.smart_ebl_water_pump
   - entity: climate.smart_ebl_truma_heater

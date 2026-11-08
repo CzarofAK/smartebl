@@ -335,13 +335,6 @@ Bistable (latching) relays require a pulse to toggle state. Controlled via MCP23
 
 ## Session Notes
 
-### 2026-11-08
-- Removed binary_sensor "Shore Power Connected" (`ac_charger_voltage > 6 V`) and its
-  `shore_power_connected` key in the display link (group T3): nothing is wired to the
-  AC charger detection input in the FRAM, the value was meaningless. Shore power in HA
-  comes only from `binary_sensor.fram_shore_power` (MultiPlus, FR-114). The display
-  parser ignores unknown keys, so flashing order does not matter.
-
 ### 2026-10-12 (FR-109)
 - Fuse sensors renamed "Fuse F1 OK" -> "Fuse F1" (id `fuse_fN_fault`), `device_class: problem`,
   logic inverted (on = voltage <= 1 V). HA shows "OK"/"Problem". New entity IDs

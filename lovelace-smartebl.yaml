@@ -59,6 +59,15 @@ views:
               - from: 14.8
                 color: '#db4437'
 
+          - type: custom:mushroom-entity-card
+            entity: binary_sensor.smart_ebl_shore_power_connected
+            name: Shore Power
+            icon: mdi:power-plug
+            icon_type: icon
+            layout: vertical
+            primary_info: none
+            secondary_info: none
+            fill_container: true
             icon_color: yellow
 
       # -------------------------------------------------------------------------
@@ -298,6 +307,9 @@ views:
           - entity: binary_sensor.smart_ebl_d_active
             name: D+ Signal (Engine Running)
             icon: mdi:engine
+          - entity: binary_sensor.smart_ebl_shore_power_connected
+            name: Shore Power
+            icon: mdi:power-plug
           - entity: sensor.smart_ebl_d_signal_status
             name: D+ Voltage
             icon: mdi:car-battery
