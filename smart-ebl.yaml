@@ -974,11 +974,9 @@ binary_sensor:
     lambda: return id(dplus_voltage).state > 6.0;
     device_class: power
 
-  - platform: template
-    name: "Shore Power Connected"
-    id: shore_power_connected
-    lambda: return id(ac_charger_voltage).state > 6.0;
-    device_class: plug
+  # "Shore Power Connected" removed 2026-11-08: no 230 V detection on this
+  # input in the FRAM, the reading was meaningless. Shore power comes from
+  # binary_sensor.fram_shore_power in HA (MultiPlus, FR-114).
 
   # ---------------------------------------------------------------------------
   # Truma Binary Sensors (LIN bus, truma_inetbox)
@@ -1510,7 +1508,6 @@ select:
 #       //   tank1_level / tank2_level / tank3_level
 #       //   fuse_f1_voltage ... fuse_f16_voltage
 #       //   leisure_battery_voltage / starter_battery_voltage / ac_charger_voltage
-#       //   shore_power_connected
 #       //   switch_pump / switch_light / switch_12v / switch_aux / eisex_output
 #
 # # Touch events from the Nextion HMI project are wired up separately, e.g.:
@@ -1704,7 +1701,6 @@ interval:
             payload += buf;
             snprintf(buf, sizeof(buf), "ac_charger_voltage=%.2f;", id(ac_charger_voltage).state);
             payload += buf;
-            payload += id(shore_power_connected).state ? "shore_power_connected=1;" : "shore_power_connected=0;";
           } else {
             g = 4;
             payload = "T4;";
