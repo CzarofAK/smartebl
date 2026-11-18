@@ -150,10 +150,12 @@ external_components:
   # esphome-truma_inetbox. It ships its own `uart` component (needed for LIN
   # BREAK detection) which replaces ESPHome's built-in uart for ALL uarts in
   # this config (display_uart too - that is fine and intended).
-  # v1.0.32 is required for ESPHome >= 2026.9.0 (v1.0.27 fixed the uart/
-  # action build errors with 2026.9, v1.0.23 fixed "uart marked FAILED").
+  # v1.0.50+ is required for ESPHome >= 2026.11.0 (includes
+  # esphome/core/alloc_helpers.h for format_hex_pretty(), PR #42).
+  # v1.0.32 was required for 2026.9.0 (v1.0.27 fixed the uart/action build
+  # errors with 2026.9, v1.0.23 fixed "uart marked FAILED").
   # See: https://github.com/havanti/esphome-truma
-  - source: github://havanti/esphome-truma@v1.0.32
+  - source: github://havanti/esphome-truma@v1.0.52
     components: [truma_inetbox, uart]
     refresh: never
 
