@@ -446,7 +446,7 @@ heater with a 1:1 RJ12 cable.
 ### External Component
 
 Uses [havanti/esphome-truma](https://github.com/havanti/esphome-truma)
-(pinned to `v1.0.32`, required for ESPHome >= 2026.9.0) - a maintained fork
+(pinned to `v1.0.52`, v1.0.50+ required for ESPHome >= 2026.11.0) - a maintained fork
 of Fabian Schmidt's `esphome-truma_inetbox`. It also replaces ESPHome's
 `uart` component (needed for LIN break detection); this applies to
 `display_uart` as well and is intended.
@@ -455,7 +455,7 @@ of Fabian Schmidt's `esphome-truma_inetbox`. It also replaces ESPHome's
 
 | Section | Entry | Purpose |
 |---------|-------|---------|
-| `external_components` | `havanti/esphome-truma@v1.0.32` | `truma_inetbox` + patched `uart` |
+| `external_components` | `havanti/esphome-truma@v1.0.52` | `truma_inetbox` + patched `uart` |
 | `uart` | `lin_uart` GPIO12/13, 9600 baud, 8N2 | LIN via TJA1021T (U14) |
 | `output` | `lin_ms` (GPIO25), `lin_wake` (GPIO26) | Slave mode, no wake pulse (both OFF at boot) |
 | `switch` | `lin_slp` "LIN Transceiver Active" (GPIO27) | TJA1021 SLP_N, `ALWAYS_ON`, turns itself back ON 60 s after being switched OFF |
