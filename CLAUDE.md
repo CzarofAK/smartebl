@@ -335,6 +335,12 @@ Bistable (latching) relays require a pulse to toggle state. Controlled via MCP23
 
 ## Session Notes
 
+### 2026-11-18
+- havanti/esphome-truma bumped v1.0.32 -> v1.0.52: ESPHome 2026.11.0 no longer re-exports
+  `format_hex_pretty()` from `helpers.h` (build error in LinBusProtocol.cpp); v1.0.50 includes
+  `alloc_helpers.h`. No config changes needed (timer max 1440->1439 and select option-count
+  validation don't affect this config).
+
 ### 2026-10-12 (FR-109)
 - Fuse sensors renamed "Fuse F1 OK" -> "Fuse F1" (id `fuse_fN_fault`), `device_class: problem`,
   logic inverted (on = voltage <= 1 V). HA shows "OK"/"Problem". New entity IDs
